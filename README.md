@@ -62,12 +62,26 @@ research tooling, not part of the plugin's runtime.
 
 ### Phase 1 — RX-only MVP
 
-- Fold the discovery/sign-in/keepalive client into this plugin (shared
-  logic currently duplicated across htool's two plugins).
-- Capture received transmissions to disk, bounded by the busy flag.
-- `node:sqlite` index: direction, channel, start/end timestamp, duration,
-  audio path, squelch, vessel position at start.
-- No UI yet — just prove clips match reality.
+**Backend implemented** (`lib/radioClient.js`, `lib/db.js`, `lib/retention.js`),
+**not yet validated against real hardware** — everything here is protocol
+logic that doesn't depend on the open Phase 0 questions, so it moved
+ahead of the actual capture run. Still to prove once the radio is
+reachable: does sign-in actually succeed, do clips line up with reality,
+does the busy flag behave as cleanly as assumed.
+
+- Discovery/sign-in/keepalive client, own module (no longer duplicated
+  research-script code) — `RadioClient` in `lib/radioClient.js`.
+- RX transmissions captured to disk as raw RTP payloads, bounded by the
+  busy flag (`lib/protocol.js` for the packet-level parsing).
+- `node:sqlite` index (`lib/db.js`): direction, channel, start/end
+  timestamp, duration, audio path, byte count, squelch, vessel position
+  at start (best-effort from `navigation.position`).
+- Retention enforcement (`lib/retention.js`) wired in after every capture.
+- REST surface live: `GET /status`, `GET /transmissions` (filterable by
+  channel/time range/direction), `GET /transmissions/:id`,
+  `GET /transmissions/:id/audio` (served as raw bytes — not decoded, see
+  Phase 0 codec question above).
+- No UI yet.
 
 ### Phase 2 — SignalK surface + UI
 

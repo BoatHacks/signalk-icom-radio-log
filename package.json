@@ -23,7 +23,7 @@
     "url": "git+https://github.com/BoatHacks/signalk-icom-radio-log.git"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.5.0"
   },
   "dependencies": {
     "ip": "^1.1.9",

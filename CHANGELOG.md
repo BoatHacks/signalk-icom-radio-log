@@ -10,6 +10,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - `retentionMaxSizeMB` config option (size-based retention, independent
   of the existing `retentionDays`).
+- Real backend implementation, ahead of Phase 0 hardware validation:
+  - `lib/protocol.js` — pure, unit-tested packet encode/decode helpers
+    (discovery, sign-in, keepalive, channel-status parsing).
+  - `lib/radioClient.js` — `RadioClient` EventEmitter wrapping the UDP
+    session (discovery/sign-in/keepalive/busy-flag tracking/RX voice
+    capture). No file I/O — consumers persist via emitted events.
+  - `lib/db.js` — `node:sqlite`-backed transmissions table and
+    query/insert/delete helpers.
+  - `lib/retention.js` — age- and size-based pruning, oldest-first,
+    removes both the DB row and the audio file.
+  - `index.js` now wires all of the above together and serves real data
+    from `/status`, `/transmissions`, `/transmissions/:id`,
+    `/transmissions/:id/audio`.
+- Test coverage: `test/protocol.test.js`, `test/db.test.js`,
+  `test/retention.test.js`, updated `test/plugin.test.js` exercising
+  real start/stop/router wiring against a temp data dir.
+
+### Changed
+
+- Minimum Node version raised to 22.5.0 (first version with `node:sqlite`).
 
 ### Decided
 
