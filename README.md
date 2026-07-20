@@ -112,16 +112,18 @@ it's actually been run against real hardware.
   anyone.
 - **Hailer/PA audio is in scope**, alongside ship's VHF — see the open
   Phase 0 question above about whether it's even visible over WiFi.
+- **Fully standalone — no dependency on `signalk-icom-m510e-plugin`.**
+  This plugin implements its own discovery/sign-in/keepalive client
+  rather than reusing or requiring that plugin's session. Simpler
+  install, no coupling between two plugins' radio sessions.
+- **Retention is configurable two ways, independently: by age (days)
+  and by total log directory size.** Whichever limit is hit first
+  prunes oldest-first. Either can be set to unlimited.
 
 ## Open decisions
 
 - Is TX-less logging acceptable for v1, or does capturing your own
   transmissions need to work before shipping anything?
-- Default retention window, or leave it unbounded until real disk usage
-  is visible? (Somewhat resolved toward "don't auto-delete by default"
-  given the immutability lean above, but still needs a concrete answer.)
-- Should this plugin depend on `signalk-icom-m510e-plugin` being
-  installed (reuse its discovery), or run fully standalone?
 
 ## Development
 

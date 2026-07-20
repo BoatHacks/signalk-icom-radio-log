@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `retentionMaxSizeMB` config option (size-based retention, independent
+  of the existing `retentionDays`).
+
+### Decided
+
+- Standalone — no dependency on `signalk-icom-m510e-plugin`.
+- Retention configurable by age and/or total log size, whichever limit
+  hits first prunes oldest-first.
+
 ## [0.1.0] - 2026-07-20
 
 ### Added

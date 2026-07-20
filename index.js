@@ -46,8 +46,15 @@ module.exports = function (app) {
       retentionDays: {
         type: 'number',
         title: 'Retention (days)',
-        description: 'Delete recordings older than this many days. 0 = keep forever.',
+        description: 'Delete recordings older than this many days. 0 = unlimited.',
         default: 30,
+      },
+      retentionMaxSizeMB: {
+        type: 'number',
+        title: 'Retention (max total size, MB)',
+        description:
+          'Delete oldest recordings once the log directory exceeds this size. 0 = unlimited. Applied independently of the age-based limit above — whichever limit is hit first prunes.',
+        default: 0,
       },
     },
   }
