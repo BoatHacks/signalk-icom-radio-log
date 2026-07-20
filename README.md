@@ -53,11 +53,12 @@ actual recording logic can be designed:
    ever decoded horn on/off/volume *control* messages, never audio for
    it — this may end up being metadata-only, same open question as #2.
 
-A standalone capture tool for this exists (`icom-capture-spike`, not
-part of this plugin, not yet pushed to its own repo) — joins the radio
-as a silent 4th client and dumps raw voice/RTP traffic plus
-channel-status events for analysis. Worth giving it its own repo once
-it's actually been run against real hardware.
+A standalone capture tool for this lives at
+[`tools/capture-spike`](tools/capture-spike) — joins the radio as a
+silent 4th client and dumps raw voice/RTP traffic plus channel-status
+events for analysis. It's deliberately kept separate from the plugin
+itself (own `package.json`, own dependencies) since it's throwaway
+research tooling, not part of the plugin's runtime.
 
 ### Phase 1 — RX-only MVP
 
