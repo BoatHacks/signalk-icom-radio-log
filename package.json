@@ -1,0 +1,33 @@
+{
+  "name": "signalk-icom-radio-log",
+  "version": "0.1.0",
+  "description": "Records incoming (and, where the hardware allows, outgoing) VHF transmissions from an Icom IC-M510E/CT-M500 over WiFi as a searchable SignalK log",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node --test --test-force-exit"
+  },
+  "keywords": [
+    "signalk-node-server-plugin",
+    "signalk-webapp",
+    "signalk-category-instruments"
+  ],
+  "signalk-plugin-enabled-by-default": false,
+  "signalk": {
+    "displayName": "Icom Radio Log"
+  },
+  "author": "Tobias Rosenstock (humppafreak)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BoatHacks/signalk-icom-radio-log.git"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "ip": "^1.1.9",
+    "is-rtp": "^2.0.0",
+    "@penggy/easy-rtp-parser": "^1.0.2"
+  }
+}
