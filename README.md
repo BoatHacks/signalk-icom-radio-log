@@ -45,6 +45,13 @@ actual recording logic can be designed:
    sessions disrupt the radio?
 4. How clean is the busy/squelch flag as a transmission start/end
    boundary?
+5. Hailer/PA is in scope (see [Scope decisions](#scope-decisions)
+   below), but it's a different audio path than ship's VHF — does
+   hailer/RX-hailer audio transit the WiFi link at all (same voice/RTP
+   port, a separate port, or is it entirely analog on the CT-M500's own
+   circuitry with nothing to capture over WiFi)? The CT-M500 plugin only
+   ever decoded horn on/off/volume *control* messages, never audio for
+   it — this may end up being metadata-only, same open question as #2.
 
 A standalone capture tool for this exists (`icom-capture-spike`, not
 part of this plugin, not yet pushed to its own repo) — joins the radio
@@ -87,12 +94,32 @@ it's actually been run against real hardware.
 - Local transcription is an explicit stretch goal, not v1 scope — most
   SignalK hosts are Pi-class hardware.
 
+## Scope decisions
+
+- **Compliance-grade log vs personal convenience tool: undecided.**
+  Whether this needs to double as an immutable, exportable record (the
+  kind commercial/GMDSS record-keeping expects) or is just a personal
+  incident-review tool is still open. Leaning the data model toward
+  immutability-friendly now (append-only, no destructive edit of a
+  logged clip's core fields) costs little and keeps both options open —
+  retrofitting that guarantee later would be much harder than relaxing
+  it later if it turns out convenience is all that's needed.
+- **No real-time alerting.** This plugin only logs, after the fact.
+  Surfacing distress/urgency calls live (SignalK notifications, etc.)
+  is explicitly out of scope — that's [[signalk-notification-dispatcher]]'s
+  job, not this plugin's. If DSC correlation (Phase 3) reveals a
+  distress call, this plugin records it richly; it does not alert
+  anyone.
+- **Hailer/PA audio is in scope**, alongside ship's VHF — see the open
+  Phase 0 question above about whether it's even visible over WiFi.
+
 ## Open decisions
 
 - Is TX-less logging acceptable for v1, or does capturing your own
   transmissions need to work before shipping anything?
 - Default retention window, or leave it unbounded until real disk usage
-  is visible?
+  is visible? (Somewhat resolved toward "don't auto-delete by default"
+  given the immutability lean above, but still needs a concrete answer.)
 - Should this plugin depend on `signalk-icom-m510e-plugin` being
   installed (reuse its discovery), or run fully standalone?
 
