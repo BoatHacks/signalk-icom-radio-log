@@ -1,3 +1,5 @@
+@no-slop.md
+
 # signalk-icom-radio-log
 
 Planned SignalK plugin that records incoming and outgoing radio transmissions
