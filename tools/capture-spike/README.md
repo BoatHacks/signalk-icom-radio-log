@@ -60,22 +60,24 @@ Stop with Ctrl-C — it flushes and closes cleanly.
   transmission number `n`. This is *not* a playable audio file yet — it's
   raw RTP packets back-to-back, deliberately undecoded.
 
-### Identifying the codec
+### Identifying the codec — answered
 
-Look at the `rtp.payloadType` values logged in `voice-packet` events (and
-summarized in each `tx-end` event's `payloadTypes` array):
+`capture.sanitized.pcap` (RX audio ↔ WiFi app session, port 50001) confirms
+the M510E/CT-M500 sends plain RTP with **payload type 0 — PCMU/G.711
+µ-law** at 8kHz mono, no Icom-proprietary vocoder:
 
-- If it's a standard RTP payload type from the [IANA RTP profile
-  registry](https://www.iana.org/assignments/rtp-parameters/rtp-parameters.xhtml)
-  (e.g. `0` = PCMU/G.711 µ-law, `8` = PCMA/G.711 A-law), you can pull the
-  RTP payload bytes straight out of the `.raw` file (12-byte RTP header per
-  packet, rest is payload) and decode with `ffmpeg -f mulaw -ar 8000 -ac 1
-  -i payload.raw out.wav` (or `alaw` for PT 8).
-- If it's a dynamic payload type (96–127) or something `is-rtp` fails to
-  parse cleanly, the codec is Icom-proprietary and will need more work —
-  try feeding a `.raw` file into `ffmpeg`/`ffprobe` with guessed codecs, or
-  compare byte patterns against known Icom D-STAR/AMBE framing if this
-  turns out to be a digital vocoder rather than PCM.
+- RTP header: standard 12 bytes (`V=2, PT=0`), sequence +1 per packet,
+  timestamp +320 per packet.
+- 320 bytes of µ-law payload per packet → 320 samples at 8kHz = 40ms
+  frames, matching the ~40ms inter-packet gap.
+- SSRC and RTCP (port 50002, sender reports + SDES) also follow plain
+  RTP/RTCP, not a custom framing.
+
+Decode with `ffmpeg -f mulaw -ar 8000 -ac 1 -i payload.raw out.wav`, or see
+`rtp.payloadType` in `voice-packet`/`tx-end` events for confirmation on your
+own capture — should read `0` for RX audio. If a future capture (e.g. TX
+audio, or hailer/PA) shows a dynamic payload type (96–127), that stream
+uses a different codec and will need separate identification.
 
 ### Sanity-checking the busy-flag boundaries
 
@@ -84,6 +86,14 @@ notes of when you actually kept the PTT down. If there's a consistent lag
 or the flag chatters (rapid start/end/start), that changes how Phase 1
 should trim clips — e.g. debounce the busy flag rather than trusting it
 directly.
+
+## Sample capture
+
+`capture.sanitized.pcap` is a real ~10s WiFi capture of an M510E session
+(login handshake on port 50003, NMEA0183 GPS forwarding on port 50004, RTP
+voice on port 50001, RTCP on port 50002) — see above for what it shows about
+the codec. GPS fix and both MAC addresses are pseudonymized; the real
+values are kept in a private repo's mapping record, not here.
 
 ## Known limitations of this script (intentional, for a Phase 0 spike)
 
