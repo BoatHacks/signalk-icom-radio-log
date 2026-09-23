@@ -60,7 +60,7 @@ Stop with Ctrl-C — it flushes and closes cleanly.
   transmission number `n`. This is *not* a playable audio file yet — it's
   raw RTP packets back-to-back, deliberately undecoded.
 
-### Identifying the codec — answered
+### Identifying the codec — RX answered, TX/hailer still open
 
 `capture.sanitized.pcap` (RX audio ↔ WiFi app session, port 50001) confirms
 the M510E/CT-M500 sends plain RTP with **payload type 0 — PCMU/G.711
@@ -75,9 +75,14 @@ the M510E/CT-M500 sends plain RTP with **payload type 0 — PCMU/G.711
 
 Decode with `ffmpeg -f mulaw -ar 8000 -ac 1 -i payload.raw out.wav`, or see
 `rtp.payloadType` in `voice-packet`/`tx-end` events for confirmation on your
-own capture — should read `0` for RX audio. If a future capture (e.g. TX
-audio, or hailer/PA) shows a dynamic payload type (96–127), that stream
-uses a different codec and will need separate identification.
+own capture — should read `0` for RX audio.
+
+`capture.sanitized.pcap` is only ~10s and doesn't contain a TX or hailer/PA
+transmission, so those codecs are still unidentified. Re-run this script
+for longer, capturing a TX and (if possible) a hailer/PA transmission, then
+check `rtp.payloadType` for those streams the same way: PT 0/8 means
+standard PCMU/PCMA, a dynamic type (96–127) means a different codec that
+will need separate identification.
 
 ### Sanity-checking the busy-flag boundaries
 

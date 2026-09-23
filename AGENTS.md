@@ -12,7 +12,9 @@ behavior, TX-audio availability, busy-flag accuracy) — done via a standalone
 tool, not the plugin itself (see below). RX codec identified: plain RTP,
 payload type 0 (PCMU/G.711 µ-law), 320-byte/40ms frames — no proprietary
 Icom vocoder, decodable with any standard library. TX/hailer codec still
-open, pending a capture of those streams.
+open — the sample capture is only ~10s of RX audio, too short to catch a
+TX or hailer transmission. Re-run Phase 0 with a longer capture once one is
+available.
 Phase 1: RX-only MVP with SQLite storage.
 Phase 2: REST endpoints + Preact/htm frontend (style like
 signalk-stowage-mgmt).
