@@ -9,7 +9,10 @@ from the Icom IC-M510E/CT-M500. Repo: BoatHacks/signalk-icom-radio-log
 ## Phased plan
 Phase 0: hardware research spike (codec identification, multi-client
 behavior, TX-audio availability, busy-flag accuracy) — done via a standalone
-tool, not the plugin itself (see below).
+tool, not the plugin itself (see below). RX codec identified: plain RTP,
+payload type 0 (PCMU/G.711 µ-law), 320-byte/40ms frames — no proprietary
+Icom vocoder, decodable with any standard library. TX/hailer codec still
+open, pending a capture of those streams.
 Phase 1: RX-only MVP with SQLite storage.
 Phase 2: REST endpoints + Preact/htm frontend (style like
 signalk-stowage-mgmt).
@@ -33,7 +36,9 @@ hardware)
 - `tools/capture-spike/` — the Phase-0 research tool (`icom-capture-spike`,
   own package.json/deps, not part of the plugin runtime): a standalone Node
   script that logs in as a silent fourth client to the M510E and captures raw
-  voice/RTP traffic for codec analysis.
+  voice/RTP traffic for codec analysis. Includes `capture.sanitized.pcap`, a
+  real sample capture (GPS fix and MACs pseudonymized) confirming the RX
+  codec finding above.
 - `lib/protocol.js` — pure, tested packet encode/decode helpers.
 - `lib/radioClient.js` — `RadioClient` EventEmitter for
   discovery/sign-in/keepalive/busy-flag-tracking/RX-voice-capture, no file I/O.
