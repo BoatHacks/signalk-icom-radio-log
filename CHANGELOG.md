@@ -26,6 +26,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Test coverage: `test/protocol.test.js`, `test/db.test.js`,
   `test/retention.test.js`, updated `test/plugin.test.js` exercising
   real start/stop/router wiring against a temp data dir.
+- `tools/capture-spike/capture.sanitized.pcap` — a real ~10s Phase 0
+  sample capture (GPS fix and MAC addresses pseudonymized) of an M510E
+  WiFi session.
 
 ### Changed
 
@@ -36,6 +39,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Standalone — no dependency on `signalk-icom-m510e-plugin`.
 - Retention configurable by age and/or total log size, whichever limit
   hits first prunes oldest-first.
+
+### Phase 0 findings
+
+- RX codec identified from the sample capture: plain RTP, payload type 0
+  (PCMU/G.711 µ-law), 320-byte payloads at ~40ms intervals (320 samples
+  at 8kHz) — no proprietary Icom vocoder. RTCP (sender reports + SDES)
+  also standard.
+- TX and hailer/PA codecs still unidentified — the sample capture is only
+  ~10s of RX audio and caught neither. Needs a longer capture-spike
+  re-run to resolve.
 
 ## [0.1.0] - 2026-07-20
 
