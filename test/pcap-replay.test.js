@@ -41,17 +41,18 @@ test('RTP voice stream: no dropped or reordered packets across the capture', () 
   }
 })
 
-test('parseChannelStatus: real 28-byte status packets are silently dropped as undersized', () => {
+test('parseChannelStatus: real 28-byte ack packets are correctly rejected, 40-byte status packets parse', () => {
   const pkts = loadCapture()
   const status = pkts.filter((p) => p.srcIp === RADIO_IP && p.srcPort === 50003)
   const byLength = {}
   for (const p of status) {
     byLength[p.payload.length] = (byLength[p.payload.length] || 0) + 1
   }
-  // Document what's actually on the wire: two distinct real packet shapes
-  // share port 50003, and only the 40-byte one meets parseChannelStatus's
-  // 36-byte minimum.
-  assert.ok(byLength[28] > 0, 'capture should contain 28-byte status packets')
+  // CHANNEL_CMD_PORT (50003) carries two distinct real packet shapes: a
+  // 28-byte ack/heartbeat (response-type byte [17] === 0x01, no channel
+  // data) and a 40-byte channel-status response (type 0x02, parsed by
+  // parseChannelStatus). See lib/protocol.js.
+  assert.ok(byLength[28] > 0, 'capture should contain 28-byte ack packets')
   assert.ok(byLength[40] > 0, 'capture should contain 40-byte status packets')
 
   for (const p of status) {
@@ -64,7 +65,9 @@ test('parseChannelStatus: real 28-byte status packets are silently dropped as un
   }
 })
 
-test('busy-flag replay: one continuous RX transmission fragments into multiple tx-start/tx-end cycles', () => {
+test('busy-flag replay: one continuous RX transmission stays a single tx-start/tx-end cycle', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+
   const pkts = loadCapture()
   const statusPkts = pkts
     .filter((p) => p.srcIp === RADIO_IP && p.srcPort === 50003)
@@ -81,20 +84,30 @@ test('busy-flag replay: one continuous RX transmission fragments into multiple t
   let voiceDataCount = 0
   rc.on('voice-data', () => { voiceDataCount++ })
 
+  // Replay at real historical pacing so the debounce timer (real
+  // setTimeout, mocked here) sees the same gaps the radio actually
+  // produced, instead of a synchronous burst.
+  let lastTs = merged[0].ts
   for (const p of merged) {
+    t.mock.timers.tick(Math.round((p.ts - lastTs) * 1000))
+    lastTs = p.ts
     if (p.kind === 'status') {
       rc._onServerCMessage(p.payload)
     } else {
       rc._onVoiceMessage(p.payload)
     }
   }
+  // Let any pending debounce timer fire.
+  t.mock.timers.tick(rc._busyDebounceMs + 1)
 
-  // Known-bad current behavior: busy-tracking ignores channelNr, so the
-  // radio's dual-watch/scan between channel 84 and 93 in this capture
-  // fragments one real transmission into 3 tx-start/tx-end cycles.
-  const txStarts = events.filter((e) => e.type === 'tx-start')
-  assert.strictEqual(txStarts.length, 3, 'currently fragments into 3 tx-start events (see CHANGELOG.md)')
+  // The dual-watch scan (channel 84/93) and the ~50ms squelch blips on
+  // the active channel itself no longer fragment the transmission — see
+  // the Phase 0 "busy-flag replay" finding in CHANGELOG.md. The capture
+  // ends mid-transmission (no closing squelch packet was captured), so
+  // there's exactly one tx-start and no tx-end.
+  assert.deepStrictEqual(events, [{ type: 'tx-start', channelNr: 84 }])
+  assert.strictEqual(rc.busy, true)
 
-  // No RTP packets are actually lost despite the fragmentation.
+  // No RTP packets are lost either.
   assert.strictEqual(voiceDataCount, voicePkts.length)
 })

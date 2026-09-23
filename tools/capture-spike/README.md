@@ -93,16 +93,20 @@ or the flag chatters (rapid start/end/start), that changes how Phase 1
 should trim clips — e.g. debounce the busy flag rather than trusting it
 directly.
 
-**Already found via `capture.sanitized.pcap` replay**: `lib/radioClient.js`
-tracks busy as a single boolean with no awareness of which channel a status
-packet is about. In the sample capture, the radio's status responses
+**Found and fixed via `capture.sanitized.pcap` replay**: `lib/radioClient.js`
+used to track busy as a single boolean with no awareness of which channel a
+status packet is about. In the sample capture, the radio's status responses
 alternate between channel 84 and channel 93 (a dual-watch/scan), and each
-switch to 93 reads as squelch-closed — replaying the capture through
-`RadioClient` produces 3 separate `tx-start`/`tx-end` cycles for one
-continuous ~7.4s RX transmission, even though no RTP packets were actually
-lost. Phase 1 needs to either key busy-tracking off `channelNr` or debounce
-across brief false-negatives before trusting clip boundaries on a scanning
-radio.
+switch to 93 used to read as squelch-closed; a genuine ~50ms squelch blip
+between syllables on the active channel (84) itself caused the same problem.
+Replaying the capture used to produce 3 separate `tx-start`/`tx-end` cycles
+for one continuous ~7.4s RX transmission, even though no RTP packets were
+actually lost. `RadioClient` now keys busy-tracking off `channelNr` and
+debounces a not-busy reading on the active channel (`busyDebounceMs`,
+default 200ms) — see `test/pcap-replay.test.js` and
+`test/radioClient.test.js` for the regression coverage. Still worth
+re-checking against a live radio once hardware is available, since the
+200ms debounce default is a guess from this one capture, not tuned data.
 
 ## Sample capture
 

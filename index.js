@@ -6,13 +6,13 @@
 //
 // STATUS: the connection layer (discovery/sign-in/keepalive, busy-flag
 // transmission boundaries) and RX voice capture are wired up. RX codec
-// confirmed as plain RTP/PCMU (G.711 µ-law) — see README.md and
-// CHANGELOG.md. Still open, requiring a real M510E to resolve:
+// confirmed as plain RTP/PCMU (G.711 µ-law), and busy-flag tracking now
+// keys off channelNr with a debounce on brief squelch drops — see
+// README.md and CHANGELOG.md. Still open, requiring a real M510E to
+// resolve:
 //
-//   - the busy/squelch flag used for clip boundaries can spuriously
-//     toggle when the radio dual-watches/scans multiple channels,
-//     fragmenting one transmission into several clips — see the Phase 0
-//     findings in CHANGELOG.md
+//   - the 200ms busy-flag debounce default is a guess from one sample
+//     capture, not tuned against real hardware
 //   - whether a 4th silent client disrupts real RS-M500 app sessions
 //
 // Protocol details (packet shapes, port roles) are reverse-engineered

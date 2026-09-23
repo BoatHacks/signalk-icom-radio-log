@@ -14,12 +14,18 @@ behavior, busy-flag accuracy for v1; TX-audio/hailer availability deferred
 to v2) — done via a standalone tool, not the plugin itself (see below). RX
 codec identified: plain RTP, payload type 0 (PCMU/G.711 µ-law),
 320-byte/40ms frames — no proprietary Icom vocoder, decodable with any
-standard library. Busy-flag replay finding: against the sample capture, a
-single continuous RX transmission fragments into 3 separate
-`tx-start`/`tx-end` cycles in `lib/radioClient.js`, because the radio
-dual-watches/scans two channel numbers and each switch reads as
-squelch-closed even though no audio was lost — needs a fix before Phase 1
-clip boundaries can be trusted. TX/hailer codec is v2 scope, not blocking.
+standard library. Busy-flag replay finding, fixed: a single continuous RX
+transmission used to fragment into 3 separate `tx-start`/`tx-end` cycles in
+`lib/radioClient.js`, because the radio dual-watches/scans two channel
+numbers (each switch read as squelch-closed) and a genuine ~50ms squelch
+blip between syllables on the active channel did too. `RadioClient` now
+keys busy-tracking off `channelNr` and debounces a not-busy reading on the
+active channel (`busyDebounceMs`, default 200ms — a guess from this one
+capture, worth re-tuning against real hardware). `parseChannelStatus` also
+fixed: the real 28-byte packets on port 50003 aren't truncated status
+packets, they're a distinct ack/heartbeat response (byte `[17] === 0x01`);
+the function now checks that type byte instead of only inferring shape
+from length. TX/hailer codec is v2 scope, not blocking.
 Phase 1: RX-only MVP with SQLite storage.
 Phase 2: REST endpoints + Preact/htm frontend (style like
 signalk-stowage-mgmt).

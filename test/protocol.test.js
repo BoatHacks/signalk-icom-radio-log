@@ -49,6 +49,7 @@ test('buildKeepAlivePacket is stable', () => {
 
 test('parseChannelStatus reads busy flag and channel number', () => {
   const buf = Buffer.alloc(36)
+  buf[17] = protocol.CHANNEL_STATUS_RESPONSE_TYPE
   buf[26] = 0x10 // channel low byte
   buf[27] = 0x00 // channel high byte
   buf[34] = 0x01
@@ -59,6 +60,7 @@ test('parseChannelStatus reads busy flag and channel number', () => {
 
 test('parseChannelStatus reports not-busy', () => {
   const buf = Buffer.alloc(36)
+  buf[17] = protocol.CHANNEL_STATUS_RESPONSE_TYPE
   buf[35] = 0x00
   const status = protocol.parseChannelStatus(buf)
   assert.strictEqual(status.busy, false)
@@ -67,4 +69,26 @@ test('parseChannelStatus reports not-busy', () => {
 test('parseChannelStatus returns null for undersized packets', () => {
   assert.strictEqual(protocol.parseChannelStatus(Buffer.alloc(10)), null)
   assert.strictEqual(protocol.parseChannelStatus(null), null)
+})
+
+test('parseChannelStatus returns null for the real 28-byte ack/heartbeat response (type 0x01)', () => {
+  // Real packet captured on CHANNEL_CMD_PORT — same "Icom" prefix as a
+  // status response but response-type byte [17] is 0x01, not 0x02, and
+  // it's shorter than a status response besides.
+  const buf = Buffer.from(
+    '49636f6d010000009201a8c01901a8c0010100000400000003ff0000',
+    'hex'
+  )
+  assert.strictEqual(protocol.parseChannelStatus(buf), null)
+})
+
+test('parseChannelStatus returns null for a long-enough buffer with the wrong response type', () => {
+  // Guards the [17] discriminator itself, independent of the length
+  // check: a buffer that passes the length guard but has response-type
+  // 0x01 must still be rejected.
+  const buf = Buffer.alloc(40)
+  buf[17] = 0x01
+  buf[26] = 0x10
+  buf[35] = 0x80
+  assert.strictEqual(protocol.parseChannelStatus(buf), null)
 })
