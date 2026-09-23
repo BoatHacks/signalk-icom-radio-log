@@ -20,7 +20,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/BoatHacks/signalk-icom-radio-log.git"
+    "url": "git+https://github.com/BoatHacks/signalk-m510e-connector.git"
   },
   "engines": {
     "node": ">=22.5.0"

@@ -4,9 +4,9 @@
 
 Planned SignalK plugin that records incoming radio transmissions from the
 Icom IC-M510E/CT-M500 (RX-only for v1; TX/hailer is v2 — see Scope
-decisions). Package/plugin id renamed from `signalk-icom-radio-log` to
-`signalk-m510e-connector`; the GitHub repo itself
-(BoatHacks/signalk-icom-radio-log, private) has not been renamed to match.
+decisions). Package/plugin id and the GitHub repo itself both renamed from
+`signalk-icom-radio-log` to `signalk-m510e-connector`
+(BoatHacks/signalk-m510e-connector, private).
 
 ## Phased plan
 Phase 0: hardware research spike (codec identification, multi-client

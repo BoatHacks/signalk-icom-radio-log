@@ -51,8 +51,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Minimum Node version raised to 22.5.0 (first version with `node:sqlite`).
 - Package/plugin renamed from `signalk-icom-radio-log` to
   `signalk-m510e-connector` (`package.json` name, `signalk.displayName`,
-  `index.js` plugin `id`/`name`). The GitHub repo itself
-  (BoatHacks/signalk-icom-radio-log) has not been renamed to match.
+  `index.js` plugin `id`/`name`). The GitHub repo was also renamed to
+  match: BoatHacks/signalk-icom-radio-log → BoatHacks/signalk-m510e-connector.
 
 ### Decided
 
