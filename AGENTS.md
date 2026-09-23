@@ -46,8 +46,8 @@ v2: TX (PTT mic) and hailer/PA transmission logging.
   oldest entries first.
 - Final project name: `signalk-m510e-connector`.
 
-## Current state (Phase 1 backend implemented, not yet validated against real
-hardware)
+## Current state (Phase 1 backend + Phase 2 webapp implemented, not yet
+validated against real hardware)
 - `tools/capture-spike/` — the Phase-0 research tool (`icom-capture-spike`,
   own package.json/deps, not part of the plugin runtime): a standalone Node
   script that logs in as a silent fourth client to the M510E and captures raw
@@ -59,10 +59,22 @@ hardware)
   discovery/sign-in/keepalive/busy-flag-tracking/RX-voice-capture, no file I/O.
 - `lib/db.js` — `node:sqlite` transmissions table.
 - `lib/retention.js` — age- and size-based pruning.
+- `lib/rtpAudio.js` — RTP packet framing (for raw/forensic on-disk storage)
+  and RTP/PCMU → WAV decoding (used on demand by the `/audio` route, not at
+  capture time).
 - `index.js` wires it together; `/status`, `/transmissions`,
   `/transmissions/:id`, `/transmissions/:id/audio` return real data.
+- `public/` — buildless Preact+htm webapp (vendored, no CDN): sortable/
+  filterable transmission table, inline playback, WAV download, live
+  status pill, light/dark theme. Verified interactively against a mock
+  API server via a headless Chromium + puppeteer-core script (not
+  committed — one-off verification, not project tooling); not yet run
+  against the real plugin/database.
 - Minimum Node version raised to 22.5.0 because of `node:sqlite`.
-- 26 tests passing.
+- 31 tests total, 28 passing in this sandbox (Node 20); the 3 failures are
+  `db.test.js`/`retention.test.js`/`plugin.test.js` needing Node ≥22.5.0
+  for `node:sqlite` — confirmed pre-existing against unmodified `main`,
+  not a regression.
 
 ## Repo scaffold (v0.1.0)
 `package.json`, `MIT-LICENSE`, `index.js` (plugin metadata/schema/placeholder

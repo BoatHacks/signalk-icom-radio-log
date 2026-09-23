@@ -41,6 +41,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   /transmissions/:id/audio` decodes per request, not at capture time.
   `test/rtpAudio.test.js` and an end-to-end decode of the real sample
   capture in `test/pcap-replay.test.js` cover it.
+- Phase 2 webapp (`public/`): buildless Preact+htm, vendored dependencies
+  (`public/vendor/preact-htm-standalone.js`), no CDN — matches
+  signalk-stowage-mgmt's convention, including its red-shifted dark/night
+  theme. Sortable transmission table (start time, channel, duration,
+  direction, position, size), filter by channel number and date range
+  (server-side, via the existing `/transmissions` query params), inline
+  playback through a bottom player bar (`<audio>` pointed at
+  `/transmissions/:id/audio`), WAV download per row, a live
+  radio-connection status pill polling `/status`. Verified interactively
+  (sort toggling, filtering, play/stop, theme switch, no console errors)
+  against a mock API server using headless Chromium + puppeteer-core,
+  since this sandbox can't run the real plugin (`node:sqlite`/Node 20) or
+  reach real hardware. Not yet checked against a real, populated database
+  or a live radio.
 
 ### Fixed
 

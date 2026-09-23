@@ -90,16 +90,21 @@ does the busy flag behave as cleanly as assumed.
   channel/time range/direction), `GET /transmissions/:id`,
   `GET /transmissions/:id/audio` (decoded to playable WAV on demand, per
   request, from the stored raw RTP — `lib/rtpAudio.js`).
-- No UI yet.
+- No UI yet (see Phase 2).
 
 ### Phase 2 — SignalK surface + UI
 
 - `GET /transmissions`, `GET /transmissions/:id`,
-  `GET /transmissions/:id/audio`.
-- Buildless Preact+htm webapp (vendored dependencies, no CDN — matches
-  [[signalk-stowage-mgmt]] and the rest of the BoatHacks plugins):
-  chronological log, filter by channel/date, inline playback.
-- `communication.vhf.recording.status` SignalK path.
+  `GET /transmissions/:id/audio` — done (Phase 1).
+- **Buildless Preact+htm webapp implemented** (`public/`; vendored
+  dependencies, no CDN — matches [[signalk-stowage-mgmt]] and the rest of
+  the BoatHacks plugins): sortable/filterable transmission table (start
+  time, channel, duration, direction, position, size), filter by channel
+  number and date range, inline playback via a bottom player bar, WAV
+  download per row, live radio-connection status pill, light/dark theme
+  (red-shifted night mode). Verified against a mock API server (see
+  CHANGELOG.md) — not yet checked against a real, populated database.
+- `communication.vhf.recording.status` SignalK path — not started.
 
 ### Phase 3 — enrichment
 
