@@ -5,6 +5,7 @@ const path = require('path')
 const { readUdpPackets } = require('./helpers/pcap')
 const protocol = require('../lib/protocol')
 const RadioClient = require('../lib/radioClient')
+const { frameRtpPackets, unframeRtpPackets, rtpPcmuPacketsToWav } = require('../lib/rtpAudio')
 
 // Replays tools/capture-spike/capture.sanitized.pcap — a real WiFi capture
 // of an M510E session — through the protocol/radioClient layer directly
@@ -39,6 +40,40 @@ test('RTP voice stream: no dropped or reordered packets across the capture', () 
     prevSeq = seq
     prevTs = ts
   }
+})
+
+test('storage round-trip: frame -> write -> unframe -> decode reproduces the real captured voice as a valid, non-silent WAV', () => {
+  const pkts = loadCapture()
+  const voice = pkts
+    .filter((p) => p.srcIp === RADIO_IP && p.srcPort === 50001)
+    .map((p) => p.payload)
+
+  // Exercises the same path production code takes: frame for on-disk
+  // ("forensic") storage, then unframe and decode on demand when the
+  // /audio route is hit, rather than decoding the packet list directly.
+  const framed = frameRtpPackets(voice)
+  const recovered = unframeRtpPackets(framed)
+  assert.strictEqual(recovered.length, voice.length)
+  const wav = rtpPcmuPacketsToWav(recovered)
+
+  assert.strictEqual(wav.subarray(0, 4).toString('ascii'), 'RIFF')
+  assert.strictEqual(wav.subarray(8, 12).toString('ascii'), 'WAVE')
+  assert.strictEqual(wav.readUInt32LE(24), 8000) // sample rate
+  const expectedMuLawBytes = voice.reduce((sum, p) => sum + (p.length - 12), 0)
+  assert.strictEqual(wav.readUInt32LE(40), expectedMuLawBytes * 2) // 16-bit PCM = 2 bytes/sample
+
+  // Confirms this is decoded real speech, not silence/comfort noise: PCM
+  // samples should have real variance, matching the manual decode from
+  // when this capture was first analyzed (see conversation history).
+  const pcm = wav.subarray(44)
+  let sumSquares = 0
+  const sampleCount = pcm.length / 2
+  for (let i = 0; i < pcm.length; i += 2) {
+    const sample = pcm.readInt16LE(i)
+    sumSquares += sample * sample
+  }
+  const rms = Math.sqrt(sumSquares / sampleCount)
+  assert.ok(rms > 100, `expected non-trivial RMS for real speech, got ${rms}`)
 })
 
 test('parseChannelStatus: real 28-byte ack packets are correctly rejected, 40-byte status packets parse', () => {

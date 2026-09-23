@@ -33,6 +33,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `test/radioClient.test.js` — replay real captured bytes (and synthetic
   edge cases) through `lib/protocol.js`/`lib/radioClient.js` without
   needing live hardware. See Phase 0 findings below.
+- `lib/rtpAudio.js` — frames captured RTP packets for on-disk storage
+  (length-prefixed, so packet boundaries survive being written to a
+  single file) and decodes that framed form to a playable WAV
+  (RTP/PCMU → mu-law → 16-bit PCM → RIFF/WAVE) on demand. Recordings on
+  disk stay raw/undecoded for forensic purposes; `GET
+  /transmissions/:id/audio` decodes per request, not at capture time.
+  `test/rtpAudio.test.js` and an end-to-end decode of the real sample
+  capture in `test/pcap-replay.test.js` cover it.
 
 ### Fixed
 

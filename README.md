@@ -78,16 +78,18 @@ does the busy flag behave as cleanly as assumed.
 
 - Discovery/sign-in/keepalive client, own module (no longer duplicated
   research-script code) — `RadioClient` in `lib/radioClient.js`.
-- RX transmissions captured to disk as raw RTP payloads, bounded by the
-  busy flag (`lib/protocol.js` for the packet-level parsing).
+- RX transmissions captured to disk as raw, length-prefix-framed RTP
+  packets (forensic — exact captured bytes, undecoded), bounded by the
+  busy flag (`lib/protocol.js` for the packet-level parsing,
+  `lib/rtpAudio.js` for the framing).
 - `node:sqlite` index (`lib/db.js`): direction, channel, start/end
   timestamp, duration, audio path, byte count, squelch, vessel position
   at start (best-effort from `navigation.position`).
 - Retention enforcement (`lib/retention.js`) wired in after every capture.
 - REST surface live: `GET /status`, `GET /transmissions` (filterable by
   channel/time range/direction), `GET /transmissions/:id`,
-  `GET /transmissions/:id/audio` (served as raw bytes — not decoded, see
-  Phase 0 codec question above).
+  `GET /transmissions/:id/audio` (decoded to playable WAV on demand, per
+  request, from the stored raw RTP — `lib/rtpAudio.js`).
 - No UI yet.
 
 ### Phase 2 — SignalK surface + UI

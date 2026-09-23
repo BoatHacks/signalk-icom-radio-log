@@ -6,10 +6,12 @@
 //
 // STATUS: the connection layer (discovery/sign-in/keepalive, busy-flag
 // transmission boundaries) and RX voice capture are wired up. RX codec
-// confirmed as plain RTP/PCMU (G.711 µ-law), and busy-flag tracking now
-// keys off channelNr with a debounce on brief squelch drops — see
-// README.md and CHANGELOG.md. Still open, requiring a real M510E to
-// resolve:
+// confirmed as plain RTP/PCMU (G.711 µ-law). Recordings are stored as
+// raw framed RTP (forensic — exact captured bytes) and decoded to WAV
+// on demand by the /audio route (lib/rtpAudio.js), not at capture time.
+// Busy-flag tracking keys off channelNr with a debounce on brief squelch
+// drops — see README.md and CHANGELOG.md. Still open, requiring a real
+// M510E to resolve:
 //
 //   - the 200ms busy-flag debounce default is a guess from one sample
 //     capture, not tuned against real hardware
@@ -26,6 +28,7 @@ const ip = require('ip')
 const RadioClient = require('./lib/radioClient')
 const db = require('./lib/db')
 const retention = require('./lib/retention')
+const { frameRtpPackets, unframeRtpPackets, rtpPcmuPacketsToWav } = require('./lib/rtpAudio')
 
 module.exports = function (app) {
   const plugin = {
@@ -73,7 +76,10 @@ module.exports = function (app) {
     const tx = currentTx
     currentTx = null
 
-    const audioBuffer = Buffer.concat(tx.chunks)
+    // Stored as raw RTP (forensic — exact captured bytes, undecoded),
+    // length-prefix framed so packet boundaries survive on disk. Decoded
+    // to WAV on demand by the /audio route, not here.
+    const audioBuffer = frameRtpPackets(tx.chunks)
     const fileName = `${tx.startTs}-ch${tx.channelNr ?? 'unknown'}.raw`
     const audioPath = path.join(recordingsDir, fileName)
     try {
@@ -202,10 +208,18 @@ module.exports = function (app) {
       if (!tx || !tx.audio_path || !fs.existsSync(tx.audio_path)) {
         return res.status(404).json({ error: 'not found' })
       }
-      // Served as-is: raw RTP payloads, not yet decoded to a playable
-      // format (codec unconfirmed — see README.md Phase 0).
-      res.setHeader('Content-Type', 'application/octet-stream')
-      fs.createReadStream(tx.audio_path).pipe(res)
+      // Stored on disk as raw framed RTP (forensic); decoded to WAV here,
+      // per request, rather than storing a decoded copy.
+      let wav
+      try {
+        const framed = fs.readFileSync(tx.audio_path)
+        wav = rtpPcmuPacketsToWav(unframeRtpPackets(framed))
+      } catch (err) {
+        app.error(`Failed decoding ${tx.audio_path}: ${err.message}`)
+        return res.status(500).json({ error: 'failed to decode audio' })
+      }
+      res.setHeader('Content-Type', 'audio/wav')
+      res.send(wav)
     })
   }
 
