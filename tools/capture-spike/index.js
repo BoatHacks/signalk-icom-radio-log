@@ -4,7 +4,7 @@
 /*
  * icom-capture-spike
  * -------------------
- * Phase 0 research spike for signalk-icom-radio-log.
+ * Phase 0 research spike for signalk-m510e-connector.
  *
  * This is NOT the plugin. It's a standalone script to run next to a real
  * IC-M510E on the boat's WiFi, to answer the open questions from the

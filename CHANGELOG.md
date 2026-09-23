@@ -33,12 +33,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Changed
 
 - Minimum Node version raised to 22.5.0 (first version with `node:sqlite`).
+- Package/plugin renamed from `signalk-icom-radio-log` to
+  `signalk-m510e-connector` (`package.json` name, `signalk.displayName`,
+  `index.js` plugin `id`/`name`). The GitHub repo itself
+  (BoatHacks/signalk-icom-radio-log) has not been renamed to match.
 
 ### Decided
 
 - Standalone — no dependency on `signalk-icom-m510e-plugin`.
 - Retention configurable by age and/or total log size, whichever limit
   hits first prunes oldest-first.
+- Final project name: `signalk-m510e-connector`.
+- TX-less logging is acceptable for v1 — outgoing (TX/PTT) and hailer/PA
+  audio moved to v2.
 
 ### Phase 0 findings
 
@@ -47,8 +54,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   at 8kHz) — no proprietary Icom vocoder. RTCP (sender reports + SDES)
   also standard.
 - TX and hailer/PA codecs still unidentified — the sample capture is only
-  ~10s of RX audio and caught neither. Needs a longer capture-spike
-  re-run to resolve.
+  ~10s of RX audio and caught neither. No longer a v1 blocker now that
+  outgoing audio is v2 scope; still worth resolving on a future,
+  longer capture-spike run.
+- Busy-flag replay finding: replaying the sample capture's channel-status
+  packets through `lib/radioClient.js` fragments one continuous ~7.4s RX
+  transmission into 3 separate `tx-start`/`tx-end` cycles. Cause: the
+  radio dual-watches/scans channel 84 and channel 93, and each status
+  response for the idle channel (93) reads as squelch-closed even though
+  the busy channel (84) is still transmitting — no RTP packets were
+  actually lost, but a real transmission would land in the DB as 3
+  fragmented rows instead of 1. `RadioClient`'s busy-tracking needs to key
+  off `channelNr` (or debounce) before Phase 1 clip boundaries can be
+  trusted on a scanning radio.
 
 ## [0.1.0] - 2026-07-20
 

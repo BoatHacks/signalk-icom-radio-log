@@ -1,7 +1,7 @@
 {
-  "name": "signalk-icom-radio-log",
+  "name": "signalk-m510e-connector",
   "version": "0.1.0",
-  "description": "Records incoming (and, where the hardware allows, outgoing) VHF transmissions from an Icom IC-M510E/CT-M500 over WiFi as a searchable SignalK log",
+  "description": "Records incoming VHF transmissions from an Icom IC-M510E/CT-M500 over WiFi as a searchable SignalK log",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
@@ -14,7 +14,7 @@
   ],
   "signalk-plugin-enabled-by-default": false,
   "signalk": {
-    "displayName": "Icom Radio Log"
+    "displayName": "M510E Connector"
   },
   "author": "Tobias Rosenstock (humppafreak)",
   "license": "MIT",

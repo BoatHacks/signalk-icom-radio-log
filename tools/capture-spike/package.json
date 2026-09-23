@@ -2,7 +2,7 @@
   "name": "icom-capture-spike",
   "version": "0.1.0",
   "private": true,
-  "description": "Phase 0 research spike: joins an IC-M510E's WiFi session as a silent 4th client and dumps everything it can about the voice/RTP channel, for signalk-icom-radio-log design work.",
+  "description": "Phase 0 research spike: joins an IC-M510E's WiFi session as a silent 4th client and dumps everything it can about the voice/RTP channel, for signalk-m510e-connector design work.",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {

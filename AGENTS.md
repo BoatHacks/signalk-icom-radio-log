@@ -1,37 +1,44 @@
 @no-slop.md
 
-# signalk-icom-radio-log
+# signalk-m510e-connector
 
-Planned SignalK plugin that records incoming and outgoing radio transmissions
-from the Icom IC-M510E/CT-M500. Repo: BoatHacks/signalk-icom-radio-log
-(private).
+Planned SignalK plugin that records incoming radio transmissions from the
+Icom IC-M510E/CT-M500 (RX-only for v1; TX/hailer is v2 — see Scope
+decisions). Package/plugin id renamed from `signalk-icom-radio-log` to
+`signalk-m510e-connector`; the GitHub repo itself
+(BoatHacks/signalk-icom-radio-log, private) has not been renamed to match.
 
 ## Phased plan
 Phase 0: hardware research spike (codec identification, multi-client
-behavior, TX-audio availability, busy-flag accuracy) — done via a standalone
-tool, not the plugin itself (see below). RX codec identified: plain RTP,
-payload type 0 (PCMU/G.711 µ-law), 320-byte/40ms frames — no proprietary
-Icom vocoder, decodable with any standard library. TX/hailer codec still
-open — the sample capture is only ~10s of RX audio, too short to catch a
-TX or hailer transmission. Re-run Phase 0 with a longer capture once one is
-available.
+behavior, busy-flag accuracy for v1; TX-audio/hailer availability deferred
+to v2) — done via a standalone tool, not the plugin itself (see below). RX
+codec identified: plain RTP, payload type 0 (PCMU/G.711 µ-law),
+320-byte/40ms frames — no proprietary Icom vocoder, decodable with any
+standard library. Busy-flag replay finding: against the sample capture, a
+single continuous RX transmission fragments into 3 separate
+`tx-start`/`tx-end` cycles in `lib/radioClient.js`, because the radio
+dual-watches/scans two channel numbers and each switch reads as
+squelch-closed even though no audio was lost — needs a fix before Phase 1
+clip boundaries can be trusted. TX/hailer codec is v2 scope, not blocking.
 Phase 1: RX-only MVP with SQLite storage.
 Phase 2: REST endpoints + Preact/htm frontend (style like
 signalk-stowage-mgmt).
 Phase 3: enrichment via DSC/NMEA0183 correlation.
 Phase 4: retention/export.
+v2: TX (PTT mic) and hailer/PA transmission logging.
 
 ## Scope decisions
 - Compliance-grade log vs. pure convenience tool: not yet decided, so the data
   model is designed to be append-only/immutable-leaning either way.
 - No real-time alerting on distress calls — that's
   [[signalk-notification-dispatcher]]'s job; this plugin only logs.
-- Hailer/PA audio from the CT-M500 is in scope (in addition to normal VHF),
-  but whether hailer audio is even visible over WiFi is still open.
+- TX-less logging is acceptable for v1 — hailer/PA and outgoing (TX) audio
+  from the CT-M500 moved to v2.
 - Runs fully standalone, no dependency on signalk-icom-m510e-plugin.
 - Retention configurable both by age (days) and by total log-directory size
   (`retentionMaxSizeMB`), independently — whichever limit is hit first deletes
   oldest entries first.
+- Final project name: `signalk-m510e-connector`.
 
 ## Current state (Phase 1 backend implemented, not yet validated against real
 hardware)
@@ -56,5 +63,5 @@ hardware)
 REST endpoints, radio connection not yet implemented at that point), framework-
 less placeholder webapp, `node --test` tests, CI via SignalK's reusable
 plugin-ci.yml, README with the phase plan, `CHANGELOG.md` (Keep-a-Changelog
-format). Open decisions still outstanding: final project name, whether
-TX-less logging is acceptable for v1.
+format). Both scaffold-era open decisions are now resolved — see Scope
+decisions above.

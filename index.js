@@ -1,19 +1,19 @@
-// signalk-icom-radio-log
+// signalk-m510e-connector
 //
-// Records incoming (and, where the hardware allows, outgoing) VHF
-// transmissions from an Icom IC-M510E/CT-M500 over WiFi as a searchable
-// SignalK log.
+// Records incoming VHF transmissions from an Icom IC-M510E/CT-M500 over
+// WiFi as a searchable SignalK log. RX-only for v1 — outgoing (TX/PTT
+// and hailer/PA) audio is a v2 feature, see README.md.
 //
 // STATUS: the connection layer (discovery/sign-in/keepalive, busy-flag
-// transmission boundaries) and RX voice capture are wired up. Two things
-// are still open, both requiring a real M510E to resolve — see README.md:
+// transmission boundaries) and RX voice capture are wired up. RX codec
+// confirmed as plain RTP/PCMU (G.711 µ-law) — see README.md and
+// CHANGELOG.md. Still open, requiring a real M510E to resolve:
 //
-//   - the RTP payload codec inside the voice stream isn't confirmed yet,
-//     so captured audio is stored as raw RTP payloads (.raw), not
-//     anything directly playable
-//   - whether outgoing (PTT mic) audio and hailer/PA audio are visible on
-//     WiFi at all, or only received traffic, is still unknown — this
-//     plugin currently only captures RX
+//   - the busy/squelch flag used for clip boundaries can spuriously
+//     toggle when the radio dual-watches/scans multiple channels,
+//     fragmenting one transmission into several clips — see the Phase 0
+//     findings in CHANGELOG.md
+//   - whether a 4th silent client disrupts real RS-M500 app sessions
 //
 // Protocol details (packet shapes, port roles) are reverse-engineered
 // from https://github.com/htool/signalk-icom-m510e-plugin and
@@ -29,10 +29,10 @@ const retention = require('./lib/retention')
 
 module.exports = function (app) {
   const plugin = {
-    id: 'signalk-icom-radio-log',
-    name: 'Icom Radio Log',
+    id: 'signalk-m510e-connector',
+    name: 'M510E Connector',
     description:
-      'Records incoming (and, where the hardware allows, outgoing) VHF transmissions from an Icom IC-M510E/CT-M500 over WiFi',
+      'Records incoming VHF transmissions from an Icom IC-M510E/CT-M500 over WiFi as a searchable SignalK log',
   }
 
   let options = {}

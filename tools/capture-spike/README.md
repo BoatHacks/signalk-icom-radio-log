@@ -1,6 +1,6 @@
 # icom-capture-spike
 
-Phase 0 research tool for `signalk-icom-radio-log`. **Not the plugin** — a
+Phase 0 research tool for `signalk-m510e-connector`. **Not the plugin** — a
 throwaway script to run on the boat's WiFi next to a real IC-M510E, to answer
 the open questions from the project plan before writing any plugin code.
 
@@ -60,7 +60,7 @@ Stop with Ctrl-C — it flushes and closes cleanly.
   transmission number `n`. This is *not* a playable audio file yet — it's
   raw RTP packets back-to-back, deliberately undecoded.
 
-### Identifying the codec — RX answered, TX/hailer still open
+### Identifying the codec — RX answered (v1), TX/hailer still open (v2)
 
 `capture.sanitized.pcap` (RX audio ↔ WiFi app session, port 50001) confirms
 the M510E/CT-M500 sends plain RTP with **payload type 0 — PCMU/G.711
@@ -78,11 +78,12 @@ Decode with `ffmpeg -f mulaw -ar 8000 -ac 1 -i payload.raw out.wav`, or see
 own capture — should read `0` for RX audio.
 
 `capture.sanitized.pcap` is only ~10s and doesn't contain a TX or hailer/PA
-transmission, so those codecs are still unidentified. Re-run this script
-for longer, capturing a TX and (if possible) a hailer/PA transmission, then
-check `rtp.payloadType` for those streams the same way: PT 0/8 means
-standard PCMU/PCMA, a dynamic type (96–127) means a different codec that
-will need separate identification.
+transmission, so those codecs are still unidentified — not a v1 blocker
+(TX/hailer logging is v2 scope), but worth resolving whenever a longer
+capture is available. Re-run this script capturing a TX and (if possible)
+a hailer/PA transmission, then check `rtp.payloadType` for those streams
+the same way: PT 0/8 means standard PCMU/PCMA, a dynamic type (96–127)
+means a different codec that will need separate identification.
 
 ### Sanity-checking the busy-flag boundaries
 
@@ -91,6 +92,17 @@ notes of when you actually kept the PTT down. If there's a consistent lag
 or the flag chatters (rapid start/end/start), that changes how Phase 1
 should trim clips — e.g. debounce the busy flag rather than trusting it
 directly.
+
+**Already found via `capture.sanitized.pcap` replay**: `lib/radioClient.js`
+tracks busy as a single boolean with no awareness of which channel a status
+packet is about. In the sample capture, the radio's status responses
+alternate between channel 84 and channel 93 (a dual-watch/scan), and each
+switch to 93 reads as squelch-closed — replaying the capture through
+`RadioClient` produces 3 separate `tx-start`/`tx-end` cycles for one
+continuous ~7.4s RX transmission, even though no RTP packets were actually
+lost. Phase 1 needs to either key busy-tracking off `channelNr` or debounce
+across brief false-negatives before trusting clip boundaries on a scanning
+radio.
 
 ## Sample capture
 

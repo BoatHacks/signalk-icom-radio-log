@@ -20,7 +20,7 @@ function tempDataDir () {
 
 test('exposes standard SignalK plugin metadata', () => {
   const plugin = createPlugin(fakeApp(tempDataDir()))
-  assert.strictEqual(plugin.id, 'signalk-icom-radio-log')
+  assert.strictEqual(plugin.id, 'signalk-m510e-connector')
   assert.strictEqual(typeof plugin.name, 'string')
   assert.strictEqual(typeof plugin.description, 'string')
   assert.strictEqual(typeof plugin.start, 'function')

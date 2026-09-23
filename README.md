@@ -1,8 +1,8 @@
-# signalk-icom-radio-log
+# signalk-m510e-connector
 
-Records incoming (and, where the hardware allows, outgoing) VHF
-transmissions from an Icom IC-M510E / CT-M500 over WiFi, as a searchable
-SignalK log — a "black box" for the radio.
+Records incoming VHF transmissions from an Icom IC-M510E / CT-M500 over
+WiFi, as a searchable SignalK log — a "black box" for the radio. Outgoing
+(TX/PTT and hailer) audio logging is a v2 feature; v1 is RX-only.
 
 ## Status
 
@@ -36,17 +36,24 @@ log transmissions rather than control the radio.
 ### Phase 0 — research spike (in progress)
 
 Open questions that need a real M510E to answer, before the plugin's
-actual recording logic can be designed:
+actual recording logic can be designed. #1, #3, #4 block v1 (RX-only);
+#2 and #5 are v2 (outgoing TX/PTT and hailer audio) and don't block v1:
 
-1. What codec is inside the voice stream's RTP payload?
-2. Is outgoing (PTT mic) audio visible on WiFi at all, or only received
-   traffic?
+1. **Answered.** RX voice codec is plain RTP, payload type 0 (PCMU/G.711
+   µ-law) — see [`tools/capture-spike`](tools/capture-spike) and the
+   Phase 0 findings in [CHANGELOG.md](CHANGELOG.md).
+2. *(v2)* Is outgoing (PTT mic) audio visible on WiFi at all, or only
+   received traffic?
 3. Does a 4th silent client signing in alongside real RS-M500 app
    sessions disrupt the radio?
 4. How clean is the busy/squelch flag as a transmission start/end
-   boundary?
-5. Hailer/PA is in scope (see [Scope decisions](#scope-decisions)
-   below), but it's a different audio path than ship's VHF — does
+   boundary? A replay of the sample capture against `lib/radioClient.js`
+   shows a single continuous RX transmission getting fragmented into 3
+   separate `tx-start`/`tx-end` cycles, because the radio's status
+   responses alternate between two channel numbers (dual-watch/scan) and
+   each switch reads as squelch-closed even though no audio was lost.
+   Needs fixing before Phase 1 can trust its clip boundaries.
+5. *(v2)* Hailer/PA is a different audio path than ship's VHF — does
    hailer/RX-hailer audio transit the WiFi link at all (same voice/RTP
    port, a separate port, or is it entirely analog on the CT-M500's own
    circuitry with nothing to capture over WiFi)? The CT-M500 plugin only
@@ -99,8 +106,11 @@ does the busy flag behave as cleanly as assumed.
   calling MMSI against the relevant clip.
 - Auto-tag entries (e.g. Ch16 distress/urgency from the DSC category
   field).
-- Add outgoing-transmission audio here if Phase 0 confirms it's
-  capturable.
+
+### v2 — outgoing audio
+
+- TX (PTT mic) and hailer/PA transmission logging, once Phase 0's open
+  questions #2 and #5 above are answered. Not part of v1.
 
 ### Phase 4 — retention & polish
 
@@ -125,8 +135,9 @@ does the busy flag behave as cleanly as assumed.
   job, not this plugin's. If DSC correlation (Phase 3) reveals a
   distress call, this plugin records it richly; it does not alert
   anyone.
-- **Hailer/PA audio is in scope**, alongside ship's VHF — see the open
-  Phase 0 question above about whether it's even visible over WiFi.
+- **Hailer/PA and TX (outgoing) audio are v2 scope**, not v1 — see the
+  open Phase 0 questions above about whether either is even visible
+  over WiFi.
 - **Fully standalone — no dependency on `signalk-icom-m510e-plugin`.**
   This plugin implements its own discovery/sign-in/keepalive client
   rather than reusing or requiring that plugin's session. Simpler
@@ -134,11 +145,9 @@ does the busy flag behave as cleanly as assumed.
 - **Retention is configurable two ways, independently: by age (days)
   and by total log directory size.** Whichever limit is hit first
   prunes oldest-first. Either can be set to unlimited.
-
-## Open decisions
-
-- Is TX-less logging acceptable for v1, or does capturing your own
-  transmissions need to work before shipping anything?
+- **TX-less logging is acceptable for v1.** Outgoing (TX/PTT and
+  hailer/PA) audio moved to v2, see above.
+- **Final project name: `signalk-m510e-connector`.**
 
 ## Development
 
