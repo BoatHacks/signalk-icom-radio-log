@@ -104,7 +104,10 @@ does the busy flag behave as cleanly as assumed.
   download per row, live radio-connection status pill, light/dark theme
   (red-shifted night mode). Verified against a mock API server (see
   CHANGELOG.md) — not yet checked against a real, populated database.
-- `communication.vhf.recording.status` SignalK path — not started.
+- `communication.vhf.recording.status` SignalK path — done: emits
+  `'recording'`/`'idle'` via `app.handleMessage` on `tx-start`/`tx-end`
+  (and an initial `'idle'` on plugin start). Custom, non-spec path —
+  nothing in the core SignalK schema covers this.
 
 ### Phase 3 — enrichment
 

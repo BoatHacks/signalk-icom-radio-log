@@ -63,7 +63,10 @@ validated against real hardware)
   and RTP/PCMU → WAV decoding (used on demand by the `/audio` route, not at
   capture time).
 - `index.js` wires it together; `/status`, `/transmissions`,
-  `/transmissions/:id`, `/transmissions/:id/audio` return real data.
+  `/transmissions/:id`, `/transmissions/:id/audio` return real data, and
+  emits `communication.vhf.recording.status` (`'recording'`/`'idle'`) via
+  `app.handleMessage` on `tx-start`/`tx-end`/start/stop — the last open
+  Phase 2 item, now done.
 - `public/` — buildless Preact+htm webapp (vendored, no CDN): sortable/
   filterable transmission table, inline playback, WAV download, live
   status pill, light/dark theme. Verified interactively against a mock
@@ -71,10 +74,13 @@ validated against real hardware)
   committed — one-off verification, not project tooling); not yet run
   against the real plugin/database.
 - Minimum Node version raised to 22.5.0 because of `node:sqlite`.
-- 31 tests total, 28 passing in this sandbox (Node 20); the 3 failures are
-  `db.test.js`/`retention.test.js`/`plugin.test.js` needing Node ≥22.5.0
-  for `node:sqlite` — confirmed pre-existing against unmodified `main`,
-  not a regression.
+- 32 tests total; this sandbox's Node 20 can't load `lib/db.js`
+  (`node:sqlite`), so `db.test.js`/`retention.test.js`/`plugin.test.js`
+  fail here directly — confirmed pre-existing against unmodified `main`,
+  not a regression. Verified the new recording-status logic anyway via a
+  throwaway in-process `DatabaseSync` shim (not committed) good enough to
+  let `plugin.test.js` run; not a substitute for the real thing on
+  Node ≥22.5.0.
 
 ## Repo scaffold (v0.1.0)
 `package.json`, `MIT-LICENSE`, `index.js` (plugin metadata/schema/placeholder

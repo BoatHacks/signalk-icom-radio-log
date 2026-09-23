@@ -5,12 +5,14 @@ const os = require('os')
 const path = require('path')
 const createPlugin = require('../index.js')
 
-function fakeApp (dataDir) {
+function fakeApp (dataDir, opts) {
+  const handledMessages = (opts && opts.handledMessages) || []
   return {
     debug: () => {},
     error: () => {},
     getDataDirPath: () => dataDir,
     getSelfPath: () => undefined,
+    handleMessage: (pluginId, delta) => { handledMessages.push({ pluginId, delta }) },
   }
 }
 
@@ -41,6 +43,22 @@ test('start creates the data dir structure and stop cleans up without throwing',
   assert.ok(fs.existsSync(path.join(dataDir, 'recordings')))
   assert.ok(fs.existsSync(path.join(dataDir, 'radio-log.sqlite')))
   assert.doesNotThrow(() => plugin.stop())
+})
+
+test('start emits an initial communication.vhf.recording.status = idle delta', () => {
+  const dataDir = tempDataDir()
+  const handledMessages = []
+  const plugin = createPlugin(fakeApp(dataDir, { handledMessages }))
+  plugin.start({ ipOverride: '127.0.0.1' })
+
+  const recordingDeltas = handledMessages.filter((m) =>
+    m.delta.updates[0].values[0].path === 'communication.vhf.recording.status'
+  )
+  assert.strictEqual(recordingDeltas.length, 1)
+  assert.strictEqual(recordingDeltas[0].pluginId, 'signalk-m510e-connector')
+  assert.strictEqual(recordingDeltas[0].delta.updates[0].values[0].value, 'idle')
+
+  plugin.stop()
 })
 
 test('registerWithRouter exposes /status and /transmissions backed by real state', () => {

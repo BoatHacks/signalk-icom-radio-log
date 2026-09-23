@@ -45,6 +45,17 @@ module.exports = function (app) {
   let currentTx = null // { channelNr, startTs, chunks: Buffer[], byteCount }
   let radioStatus = { connected: false, ip: null, port: null }
 
+  // communication.vhf.recording.status: a custom (non-spec) SignalK path
+  // so other plugins/webapps can see recording state without polling the
+  // REST /status endpoint. 'recording' while a transmission is captured,
+  // 'idle' otherwise.
+  function emitRecordingStatus (value) {
+    if (typeof app.handleMessage !== 'function') return
+    app.handleMessage(plugin.id, {
+      updates: [{ values: [{ path: 'communication.vhf.recording.status', value }] }],
+    })
+  }
+
   plugin.schema = {
     type: 'object',
     properties: {
@@ -139,6 +150,7 @@ module.exports = function (app) {
 
     radioClient.on('tx-start', ({ channelNr, startTs }) => {
       currentTx = { channelNr, startTs, chunks: [], byteCount: 0 }
+      emitRecordingStatus('recording')
     })
 
     radioClient.on('voice-data', ({ data }) => {
@@ -150,11 +162,14 @@ module.exports = function (app) {
 
     radioClient.on('tx-end', ({ reason, endTs }) => {
       finishTransmission(reason, endTs)
+      emitRecordingStatus('idle')
     })
 
     radioClient.on('error', (err) => {
       app.error(`Radio client error (${err.server || '?'}): ${err.message}`)
     })
+
+    emitRecordingStatus('idle')
 
     radioClient.start().catch((err) => {
       app.error(`Failed to start radio client: ${err.message}`)
@@ -172,7 +187,10 @@ module.exports = function (app) {
       database = null
     }
     radioStatus = { connected: false, ip: null, port: null }
-    currentTx = null
+    if (currentTx) {
+      currentTx = null
+      emitRecordingStatus('idle')
+    }
   }
 
   plugin.registerWithRouter = function (router) {

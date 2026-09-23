@@ -55,6 +55,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   since this sandbox can't run the real plugin (`node:sqlite`/Node 20) or
   reach real hardware. Not yet checked against a real, populated database
   or a live radio.
+- `communication.vhf.recording.status` SignalK path: emits `'recording'`
+  via `app.handleMessage` on `tx-start`, `'idle'` on `tx-end` and on
+  plugin start/stop — a custom, non-spec path, since nothing in the core
+  SignalK schema covers this. Closes the last open Phase 2 item.
+  Verified in `test/plugin.test.js` (initial `'idle'` emission on start)
+  against a real `node:sqlite`-free run using a minimal in-process
+  `DatabaseSync` shim, since this sandbox's Node 20 can't load
+  `lib/db.js` otherwise.
 
 ### Fixed
 
