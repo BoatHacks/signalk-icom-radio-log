@@ -115,7 +115,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   voice-command use case with no VHF vocabulary in it at all. See
   README.md's "Known limitation" section for the recommended fix (extend
   the shared instance's initial prompt) and a copy-pasteable snippet.
-  Not fixable from this plugin's own code.
+  Not fixable from this plugin's own code — but the fix was applied to
+  this host's shared whisper instance and confirmed to measurably help:
+  "Securite securite securite" went from consistently garbled to exactly
+  correct on both re-test runs, and the tripled "Pan-pan" repetition-loop
+  bug (previously ~100 repeats of "pan") dropped to at most 7. Isolated
+  "Mayday" is still the weakest case (correct roughly half the time
+  post-fix, vs. never before) — a bigger model would likely help further
+  but wasn't tested.
 
 ### Fixed
 

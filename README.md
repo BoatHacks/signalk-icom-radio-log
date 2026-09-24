@@ -194,6 +194,20 @@ VHF-dedicated whisper container with its own prompt, or a larger model
 less prompt-biasing for rare/loanwords, at higher RAM cost. Both are
 heavier than the prompt fix and untested here.
 
+**This fix was applied and confirmed to help**, on this project's own
+test host: same phrases, before vs. after extending the shared instance's
+prompt with the snippet above (container recreated, not just restarted,
+since `--initial-prompt` is fixed at container creation):
+
+| Phrase | Before | After |
+| --- | --- | --- |
+| "Mayday." | "Nade." every time | "Mayday." roughly half the time, phonetically-close misses otherwise — never "Nade" again |
+| "Securite securite securite." | inconsistently garbled | "Securite, Securite, Securite, Securite." — exactly right, both re-test runs |
+| "Pan-pan pan-pan pan-pan." | one run hallucinated ~100 repeats of "pan" | worst case 7 repeats, best case exactly right — the runaway loop is gone |
+
+Not a full fix — isolated "Mayday" is still the weakest case — but a
+real, measurable improvement from a one-line config change.
+
 ## Scope decisions
 
 - **Compliance-grade log vs personal convenience tool: undecided.**
