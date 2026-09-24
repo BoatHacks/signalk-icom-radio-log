@@ -7,7 +7,8 @@ const {
   extractMuLawPayload,
   muLawToPcm16,
   pcm16ToWav,
-  rtpPcmuPacketsToWav
+  rtpPcmuPacketsToWav,
+  rawPathToWavPath
 } = require('../lib/rtpAudio')
 
 function rtpPacket ({ payloadType = 0, payload = Buffer.alloc(4, 0xff) } = {}) {
@@ -84,4 +85,8 @@ test('rtpPcmuPacketsToWav on an empty transmission produces a valid, empty WAV',
   const wav = rtpPcmuPacketsToWav([])
   assert.strictEqual(wav.length, 44)
   assert.strictEqual(wav.readUInt32LE(40), 0)
+})
+
+test('rawPathToWavPath swaps the .raw extension for .wav, same basename', () => {
+  assert.strictEqual(rawPathToWavPath('/data/recordings/1700000000-ch16.raw'), '/data/recordings/1700000000-ch16.wav')
 })

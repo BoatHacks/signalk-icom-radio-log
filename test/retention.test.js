@@ -58,6 +58,19 @@ test('enforce prunes by age also removes the audio file', () => {
   assert.strictEqual(fs.existsSync(tx.audio_path), false)
 })
 
+test('enforce prunes by age also removes the paired WAV file', () => {
+  const { recordingsDir, database } = setup()
+  const now = Date.now()
+  const oldId = addFixture(database, recordingsDir, { startTs: now - 40 * 24 * 60 * 60 * 1000, sizeBytes: 10 })
+  const tx = db.getTransmission(database, oldId)
+  const wavPath = tx.audio_path.replace(/\.raw$/, '.wav')
+  fs.writeFileSync(wavPath, Buffer.alloc(10))
+  assert.ok(fs.existsSync(wavPath))
+
+  retention.enforce(database, recordingsDir, { retentionDays: 30 })
+  assert.strictEqual(fs.existsSync(wavPath), false)
+})
+
 test('enforce prunes by total size, oldest first, until under budget', () => {
   const { recordingsDir, database } = setup()
   addFixture(database, recordingsDir, { startTs: 1000, sizeBytes: 1024 * 1024 }) // 1MB, oldest

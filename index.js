@@ -6,9 +6,12 @@
 //
 // STATUS: the connection layer (discovery/sign-in/keepalive, busy-flag
 // transmission boundaries) and RX voice capture are wired up. RX codec
-// confirmed as plain RTP/PCMU (G.711 µ-law). Recordings are stored as
-// raw framed RTP (forensic — exact captured bytes) and decoded to WAV
-// on demand by the /audio route (lib/rtpAudio.js), not at capture time.
+// confirmed as plain RTP/PCMU (G.711 µ-law). Each recording is stored as
+// two files at capture time (lib/rtpAudio.js): raw framed RTP (forensic
+// — exact captured bytes) and a decoded WAV, both pruned by retention
+// together. /audio serves the stored WAV directly — an earlier version
+// decoded on every request instead of storing one, which turned out not
+// to play reliably in the browser.
 // Busy-flag tracking keys off channelNr with a debounce on brief squelch
 // drops — see README.md and CHANGELOG.md. Optional speech-to-text: POST
 // /transmissions/:id/transcribe sends the decoded PCM straight to a
@@ -33,7 +36,7 @@ const ip = require('ip')
 const RadioClient = require('./lib/radioClient')
 const db = require('./lib/db')
 const retention = require('./lib/retention')
-const { frameRtpPackets, unframeRtpPackets, rtpPcmuPacketsToWav, extractMuLawPayload, muLawToPcm16, SAMPLE_RATE } = require('./lib/rtpAudio')
+const { frameRtpPackets, unframeRtpPackets, rtpPcmuPacketsToWav, rawPathToWavPath, extractMuLawPayload, muLawToPcm16, SAMPLE_RATE } = require('./lib/rtpAudio')
 const { transcribeAudio } = require('./lib/wyomingClient')
 
 module.exports = function (app) {
@@ -106,14 +109,19 @@ module.exports = function (app) {
     const tx = currentTx
     currentTx = null
 
-    // Stored as raw RTP (forensic — exact captured bytes, undecoded),
-    // length-prefix framed so packet boundaries survive on disk. Decoded
-    // to WAV on demand by the /audio route, not here.
-    const audioBuffer = frameRtpPackets(tx.chunks)
+    // Two files per transmission: the raw framed RTP (forensic — exact
+    // captured bytes, undecoded, length-prefixed so packet boundaries
+    // survive on disk) and a decoded WAV, written once here rather than
+    // decoded per-request. Both share a basename (rawPathToWavPath) so
+    // retention can find/delete the pair from either.
+    const rawBuffer = frameRtpPackets(tx.chunks)
+    const wavBuffer = rtpPcmuPacketsToWav(tx.chunks)
     const fileName = `${tx.startTs}-ch${tx.channelNr ?? 'unknown'}.raw`
     const audioPath = path.join(recordingsDir, fileName)
+    const wavPath = rawPathToWavPath(audioPath)
     try {
-      fs.writeFileSync(audioPath, audioBuffer)
+      fs.writeFileSync(audioPath, rawBuffer)
+      fs.writeFileSync(wavPath, wavBuffer)
     } catch (err) {
       app.error(`Failed writing recording ${audioPath}: ${err.message}`)
       return
@@ -134,11 +142,11 @@ module.exports = function (app) {
       endTs,
       durationMs: endTs - tx.startTs,
       audioPath,
-      byteCount: audioBuffer.length,
+      byteCount: rawBuffer.length + wavBuffer.length,
       lat: position ? position.latitude : null,
       lon: position ? position.longitude : null,
     })
-    app.debug(`Recorded transmission #${id} (${reason}), ${audioBuffer.length} bytes, channel ${tx.channelNr}`)
+    app.debug(`Recorded transmission #${id} (${reason}), ${rawBuffer.length} raw + ${wavBuffer.length} wav bytes, channel ${tx.channelNr}`)
 
     try {
       retention.enforce(database, recordingsDir, {
@@ -242,21 +250,13 @@ module.exports = function (app) {
     router.get('/transmissions/:id/audio', (req, res) => {
       if (!database) return res.status(404).json({ error: 'not found' })
       const tx = db.getTransmission(database, Number(req.params.id))
-      if (!tx || !tx.audio_path || !fs.existsSync(tx.audio_path)) {
-        return res.status(404).json({ error: 'not found' })
-      }
-      // Stored on disk as raw framed RTP (forensic); decoded to WAV here,
-      // per request, rather than storing a decoded copy.
-      let wav
-      try {
-        const framed = fs.readFileSync(tx.audio_path)
-        wav = rtpPcmuPacketsToWav(unframeRtpPackets(framed))
-      } catch (err) {
-        app.error(`Failed decoding ${tx.audio_path}: ${err.message}`)
-        return res.status(500).json({ error: 'failed to decode audio' })
-      }
-      res.setHeader('Content-Type', 'audio/wav')
-      res.send(wav)
+      if (!tx || !tx.audio_path) return res.status(404).json({ error: 'not found' })
+      const wavPath = rawPathToWavPath(tx.audio_path)
+      if (!fs.existsSync(wavPath)) return res.status(404).json({ error: 'not found' })
+      // Serves the WAV written at capture time (finishTransmission), not a
+      // per-request decode — sendFile supports Range requests, which some
+      // browsers require for an <audio> element to play at all.
+      res.sendFile(wavPath)
     })
 
     // Speech-to-text, via an optional Wyoming ASR service (typically

@@ -143,6 +143,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `signalk-m510e-connector` (`package.json` name, `signalk.displayName`,
   `index.js` plugin `id`/`name`). The GitHub repo was also renamed to
   match: BoatHacks/signalk-icom-radio-log → BoatHacks/signalk-m510e-connector.
+- **Reverted on-the-fly RTP→WAV decoding.** `GET /transmissions/:id/audio`
+  used to decode the stored raw RTP to WAV on every request
+  (`res.send(buffer)`); found not to play reliably in the browser after
+  live testing (`res.send(buffer)` has no HTTP Range support, which some
+  `<audio>` implementations need to play at all). Now `finishTransmission`
+  writes both the raw RTP file and a decoded WAV once, at capture time,
+  and `/audio` serves the stored WAV via `res.sendFile()` (Range-aware).
+  `lib/rtpAudio.js` gained `rawPathToWavPath()` so `index.js` and
+  `lib/retention.js` can find/delete the paired file from either path
+  without a second DB column. Retention now deletes both files together;
+  `byte_count` reflects raw+WAV combined. Existing recordings from before
+  this change (raw-only) needed a one-time backfill to decode and write
+  their missing `.wav` file.
 
 ### Decided
 

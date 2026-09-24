@@ -62,9 +62,13 @@ validated against real hardware)
   discovery/sign-in/keepalive/busy-flag-tracking/RX-voice-capture, no file I/O.
 - `lib/db.js` — `node:sqlite` transmissions table.
 - `lib/retention.js` — age- and size-based pruning.
-- `lib/rtpAudio.js` — RTP packet framing (for raw/forensic on-disk storage)
-  and RTP/PCMU → WAV decoding (used on demand by the `/audio` route, not at
-  capture time).
+- `lib/rtpAudio.js` — RTP packet framing (raw/forensic on-disk storage)
+  and RTP/PCMU → WAV decoding. Both the raw file and the decoded WAV are
+  written once, at capture time (`finishTransmission`) — reverted from an
+  earlier on-demand-per-request decode after live testing found it didn't
+  play reliably (`res.send(buffer)` has no Range support; `res.sendFile()`
+  on a real file does). `rawPathToWavPath()` derives one path from the
+  other so retention can delete the pair without a second DB column.
 - `lib/wyomingProtocol.js` — minimal, self-contained Wyoming wire framing
   (encode/decode). Not a dependency on `signalk-wyoming/protocol` — that
   package isn't on npm yet, and its own DEVELOPERS.md says sibling plugins
@@ -148,6 +152,41 @@ validated against real hardware)
   produced client-side timeouts even though the server-side transcription
   had actually succeeded — a test-harness timeout, not a recognition
   failure.
+
+- **Installed on this host's live Signal K server**
+  (BoatHacks/signalk-m510e-connector, `~/.signalk/node_modules/
+  signalk-m510e-connector`). A symlink to the git checkout doesn't work —
+  Signal K runs in a container with only `~/.signalk` bind-mounted in, so
+  a symlink pointing outside it is dangling from the container's point of
+  view (`require()` failed silently; the plugin's routes still mounted,
+  which looked like success until checked against
+  `communication.vhf.recording.status` and the missing data directory).
+  Deployed as a real `git archive HEAD` copy instead, with its own
+  `npm install --omit=dev`. **This copy does not auto-update — after any
+  change meant for the live server, re-copy the changed files
+  (`index.js`, `lib/`, `public/`, ...) into that directory and restart via
+  `systemctl --user restart signalk-server.service`** (not a bare
+  `podman restart` — this project's Signal K install runs as a systemd
+  Quadlet unit). 9 synthetic test transmissions are seeded into its log
+  (4 VHF-proword-isolation phrases via `scripts/seed-example-recordings.js`,
+  5 general-traffic phrases via a throwaway variant) — every row's
+  `notes` field says `SYNTHETIC TEST DATA`, never a real distress call.
+  `asrUri` is set to `tcp://127.0.0.1:10300` (the local whisper install;
+  Signal K runs with host networking, so `127.0.0.1` reaches sibling
+  containers' published ports directly) and confirmed working end to end
+  against a real seeded recording.
+
+- **Reverted on-the-fly RTP→WAV decoding after live playback testing
+  found it silent.** The Play button showed a player bar but produced no
+  sound — traced to `res.send(buffer)` (used by the old on-demand
+  `/audio` decode) lacking HTTP Range support, which some `<audio>`
+  implementations need. `finishTransmission` now writes both the raw RTP
+  and a decoded WAV once, at capture time; `/audio` serves the stored WAV
+  via `res.sendFile()` (Range-aware). The 9 already-seeded recordings
+  (raw-only, from before this change) needed a one-time backfill script
+  to decode and write their missing `.wav` files on the live server —
+  new recordings don't need this. See CHANGELOG.md "Changed" for the full
+  writeup.
 
 ## Repo scaffold (v0.1.0)
 `package.json`, `MIT-LICENSE`, `index.js` (plugin metadata/schema/placeholder

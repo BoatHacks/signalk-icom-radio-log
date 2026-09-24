@@ -78,18 +78,25 @@ does the busy flag behave as cleanly as assumed.
 
 - Discovery/sign-in/keepalive client, own module (no longer duplicated
   research-script code) — `RadioClient` in `lib/radioClient.js`.
-- RX transmissions captured to disk as raw, length-prefix-framed RTP
-  packets (forensic — exact captured bytes, undecoded), bounded by the
-  busy flag (`lib/protocol.js` for the packet-level parsing,
-  `lib/rtpAudio.js` for the framing).
+- RX transmissions captured to disk as **two files each**, written once
+  at capture time (`lib/rtpAudio.js`, bounded by the busy flag —
+  `lib/protocol.js` for the packet-level parsing): the raw,
+  length-prefix-framed RTP packets (forensic — exact captured bytes,
+  undecoded) and a decoded WAV, sharing a basename
+  (`<startTs>-ch<channelNr>.raw`/`.wav`). An earlier version decoded to
+  WAV on every `/audio` request instead of storing one — reverted after
+  it turned out not to play reliably in the browser (`res.send(buffer)`
+  has no Range-request support, which some `<audio>` implementations
+  need); `res.sendFile()` on a real file on disk does.
 - `node:sqlite` index (`lib/db.js`): direction, channel, start/end
-  timestamp, duration, audio path, byte count, squelch, vessel position
-  at start (best-effort from `navigation.position`).
-- Retention enforcement (`lib/retention.js`) wired in after every capture.
+  timestamp, duration, audio path, byte count (raw + WAV combined),
+  squelch, vessel position at start (best-effort from
+  `navigation.position`).
+- Retention enforcement (`lib/retention.js`) wired in after every
+  capture — deletes both files together.
 - REST surface live: `GET /status`, `GET /transmissions` (filterable by
   channel/time range/direction), `GET /transmissions/:id`,
-  `GET /transmissions/:id/audio` (decoded to playable WAV on demand, per
-  request, from the stored raw RTP — `lib/rtpAudio.js`).
+  `GET /transmissions/:id/audio` (serves the stored WAV directly).
 - No UI yet (see Phase 2).
 
 ### Phase 2 — SignalK surface + UI
