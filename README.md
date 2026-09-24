@@ -221,6 +221,29 @@ that a real recording goes through) is in
 [`scripts/generate-test-audio.js`](scripts/generate-test-audio.js) — run
 it yourself against your own Piper install to compare.
 
+#### A second issue: our own test audio was mispronouncing "Securite"
+
+"Securite" is French in origin, and the real on-air pronunciation — per
+ITU-R radiotelephony convention — sounds like **"say-curie-tay"**, not
+how an English voice reads the written word letter-by-letter. Piper's
+`en_US` voice was doing the latter, so every "Securite" test phrase in
+this section up to here was itself mispronounced, independent of
+whisper's vocabulary bias. `scripts/generate-test-audio.js` (and the
+regenerated `scripts/examples/securite-triple-*.wav`) now sends Piper
+the phonetic spelling for synthesis while keeping "Securite" as the
+canonical spelling everywhere else (labels, notes, DB `text` fields) —
+see the `synthesisText` field on that script's `securite-triple` case.
+
+Recognition accuracy with the corrected pronunciation is comparable to
+before, not dramatically better — isolated "Say-curie-tay." still comes
+back correct only about half the time (*"Securite,"* / *"Take your
+retake."*, similar variance to the mispronounced version), and the
+tripled form still over-repeats (*"Securite, security, security,
+security, security."*). The real point isn't a recognition-accuracy
+lever — it's that the test audio itself is now phonetically realistic,
+representative of what actually comes over a real VHF radio, rather than
+testing against a pronunciation nobody would ever say on-air.
+
 ## Scope decisions
 
 - **Compliance-grade log vs personal convenience tool: undecided.**

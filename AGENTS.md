@@ -188,6 +188,19 @@ validated against real hardware)
   new recordings don't need this. See CHANGELOG.md "Changed" for the full
   writeup.
 
+- **"Securite" test audio was mispronounced — fixed.** Real on-air
+  pronunciation is "say-curie-tay" (French-derived, per ITU-R
+  radiotelephony convention), not how Piper's `en_US` voice reads the
+  written word. `scripts/generate-test-audio.js`'s `securite-triple` case
+  now has a `synthesisText` override carrying the phonetic spelling;
+  `scripts/examples/securite-triple-*.wav` regenerated. The two live
+  seeded rows using this phrase (#4, #6) were regenerated in place
+  (same `audio_path`/id, new audio content, `duration_ms`/`byte_count`
+  updated, `transcript` cleared) via a throwaway script, and now
+  transcribe cleanly to "Securite" through the live plugin route. See
+  CHANGELOG.md "Known limitations" for the accuracy data (comparable to
+  before — this is about test-audio realism, not a recognition fix).
+
 ## Repo scaffold (v0.1.0)
 `package.json`, `MIT-LICENSE`, `index.js` (plugin metadata/schema/placeholder
 REST endpoints, radio connection not yet implemented at that point), framework-

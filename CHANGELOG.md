@@ -123,6 +123,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   "Mayday" is still the weakest case (correct roughly half the time
   post-fix, vs. never before) — a bigger model would likely help further
   but wasn't tested.
+- **Our own "Securite" test audio was mispronounced.** "Securite" is
+  French in origin; the real on-air pronunciation ("say-curie-tay", per
+  ITU-R radiotelephony convention) doesn't match how Piper's `en_US`
+  voice reads the written word. `scripts/generate-test-audio.js` now has
+  a `synthesisText` field on the `securite-triple` case carrying the
+  phonetic spelling actually sent to Piper, while `text` stays the
+  canonical spelling for labels/notes/logging.
+  `scripts/examples/securite-triple-*.wav` regenerated accordingly.
+  Recognition accuracy is comparable to before (not a fix for that) — the
+  point is realism: the test audio now says what a real VHF radio would
+  actually say, not an English misreading of the written proword.
 
 ### Fixed
 

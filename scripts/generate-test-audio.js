@@ -28,7 +28,12 @@ const CASES = [
   { name: 'mayday-single', text: 'Mayday.' },
   { name: 'mayday-triple', text: 'Mayday mayday mayday.' },
   { name: 'panpan-triple', text: 'Pan-pan pan-pan pan-pan.' },
-  { name: 'securite-triple', text: 'Securite securite securite.' },
+  // "Securite" is the written proword, but it's French in origin and the
+  // real on-air pronunciation ("say-curie-tay", per ITU-R radiotelephony
+  // convention) doesn't match how an English TTS voice reads the written
+  // word. synthesisText carries the phonetic approximation actually sent
+  // to Piper; text stays the canonical spelling for labels/notes/logging.
+  { name: 'securite-triple', text: 'Securite securite securite.', synthesisText: 'Say-curie-tay, say-curie-tay, say-curie-tay.' },
 ]
 
 function parseArgs (argv) {
@@ -44,13 +49,14 @@ async function main () {
   const { piperHost, piperPort } = parseArgs(process.argv.slice(2))
   fs.mkdirSync(EXAMPLES_DIR, { recursive: true })
 
-  for (const { name, text } of CASES) {
-    process.stdout.write(`synthesizing "${text}"... `)
+  for (const { name, text, synthesisText } of CASES) {
+    const spoken = synthesisText || text
+    process.stdout.write(`synthesizing "${spoken}"... `)
 
     // Piper's raw output, before the radio-path simulation — lets you
     // tell whether a mis-transcription comes from Piper's pronunciation
     // or from the resample/mu-law/8kHz round-trip.
-    const { format, pcm: rawPcm } = await synthesize({ host: piperHost, port: piperPort, text })
+    const { format, pcm: rawPcm } = await synthesize({ host: piperHost, port: piperPort, text: spoken })
     fs.writeFileSync(path.join(EXAMPLES_DIR, `${name}-piper-raw.wav`), pcm16ToWav(rawPcm, { sampleRate: format.rate }))
 
     // What lib/wyomingClient.js actually sends to the ASR service: the
