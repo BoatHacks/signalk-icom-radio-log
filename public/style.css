@@ -166,7 +166,7 @@ body {
   white-space: normal;
 }
 
-.play-btn {
+.play-btn, .download-btn {
   font: inherit;
   border: 1px solid var(--border-strong);
   background: var(--surface);
@@ -174,15 +174,12 @@ body {
   border-radius: 6px;
   padding: 2px 8px;
   cursor: pointer;
-}
-.play-btn:hover { background: var(--surface-alt); }
-
-.download-link {
-  margin-left: 6px;
-  color: var(--link);
+  display: inline-block;
   text-decoration: none;
 }
-.download-link:hover { text-decoration: underline; }
+.play-btn:hover, .download-btn:hover { background: var(--surface-alt); }
+
+.download-btn { margin-left: 6px; }
 
 .transcript-cell { max-width: 20rem; white-space: normal; }
 

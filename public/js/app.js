@@ -87,7 +87,7 @@ function TransmissionRow(props) {
         <button class="play-btn" onClick=${function () { props.onPlay(tx); }}>
           ${isPlaying ? '■' : '▶'}
         </button>
-        <a class="download-link" href=${api.audioUrl(tx.id)} download=${'transmission-' + tx.id + '.wav'} title="Download">⬇</a>
+        <a class="download-btn" href=${api.audioUrl(tx.id)} download=${'transmission-' + tx.id + '.wav'} title="Download">⬇ Download</a>
       </td>
       <td class="transcript-cell">
         <${TranscriptCell} tx=${tx} transcribing=${props.transcribing} error=${props.transcribeError} onTranscribe=${props.onTranscribe} />
