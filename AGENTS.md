@@ -131,8 +131,8 @@ validated against real hardware)
   `--initial-prompt` baked in — a plain `podman restart` would *not* have
   picked it up, since Cmd args are fixed at container creation) with the
   user's explicit go-ahead for this specific action. Re-ran the isolation
-  script (`e2e-mayday-isolation.js`, session scratchpad, not committed)
-  against the recreated container:
+  test (an ancestor of what's now `scripts/generate-test-audio.js` +
+  `scripts/examples/`, committed) against the recreated container:
 
   | Phrase | Before | After (2 runs) |
   | --- | --- | --- |
