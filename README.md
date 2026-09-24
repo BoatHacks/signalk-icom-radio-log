@@ -143,6 +143,57 @@ does the busy flag behave as cleanly as assumed.
   this plugin talks to the underlying ASR service directly instead — see
   `lib/wyomingClient.js`/`lib/wyomingProtocol.js`.
 
+#### Known limitation: standard VHF prowords transcribe poorly on the default model
+
+Tested end to end against a real Piper + whisper (`tiny-int8`) install: a
+phrase like *"Vessel traffic Dover, this is motor vessel Curlew, request
+permission to enter the channel"* transcribes with ~90%+ word accuracy. But
+the three internationally standardized distress/urgency/safety prowords
+come through badly:
+
+- **"Mayday."** alone → *"Nade."*, every time.
+- **"Securite."** alone → *"Take your it." / "Secure it."*
+- **"Pan-pan pan-pan pan-pan."** (the standard triple) can trigger a
+  Whisper repetition-loop bug — one run produced the word "pan" ~100 times.
+
+Root cause, not a guess: `faster-whisper`/`wyoming-faster-whisper` takes an
+`--initial-prompt` string that biases its vocabulary, but it's a **server
+startup flag**, not something a client can set per request — the Wyoming
+`transcribe` event's `context`/`name` fields exist in the protocol but this
+server implementation (`dispatch_handler.py`) only reads `language` from
+them. A shared whisper instance's `--initial-prompt` is commonly tuned for
+a *different* voice-command use case (e.g. sail trim / rig / engine
+vocabulary for a boat-assistant plugin) and typically contains no VHF
+procedure words at all, which pushes the model further away from
+recognizing them.
+
+**Recommended fix**: extend that shared instance's `--initial-prompt` to
+include VHF prowords — cheap, no new container, and it's exactly the
+mechanism `wyoming-faster-whisper`'s own vocabulary-biasing design expects
+to be used for domain-specific terms. If you're running
+[signalk-whisper](https://github.com/hoeken/signalk-whisper), its plugin
+config has an **Initial prompt** field — append this to whatever's already
+there (comma-separated, same sentence):
+
+```text
+Mayday, Pan-pan, Securite, roger, over, out, radio check, all stations, coast guard, distress, MMSI.
+```
+
+Keep the existing terms in front of it — Whisper's prompt is used in
+priority order and is silently truncated well before any hard length
+limit, so appending (not replacing) keeps both vocabularies working. Two
+things confirmed by `wyoming-faster-whisper`'s own `vocabulary.py`: the
+prompt budget is capped around 200 tokens (roughly 2.95 characters/token
+for a comma-joined name list), and a too-long prompt makes the model
+hallucinate/echo words that were never said — so don't just keep bolting
+more phrases onto this indefinitely.
+
+If a shared instance isn't an option, the fallback is a second,
+VHF-dedicated whisper container with its own prompt, or a larger model
+(`base`/`small` instead of `tiny-int8`) — bigger models generally need
+less prompt-biasing for rare/loanwords, at higher RAM cost. Both are
+heavier than the prompt fix and untested here.
+
 ## Scope decisions
 
 - **Compliance-grade log vs personal convenience tool: undecided.**

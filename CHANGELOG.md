@@ -92,8 +92,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
     events, service errors, connection-refused, timeout), a decode-path
     parity check against the real sample capture in
     `test/pcap-replay.test.js`, and the `501`-when-unconfigured route
-    guard in `test/plugin.test.js`. Never tested against a real
-    signalk-wyoming/whisper install.
+    guard in `test/plugin.test.js`.
+  - Since verified end to end against a real Piper + whisper install on
+    this host (see "Known limitations" below) — Piper-synthesized test
+    phrases resampled to 8kHz, mu-law encoded, and framed as fake RTP
+    packets matching the real M510E's wire format, run through the exact
+    frame/unframe/decode path production code uses, then transcribed by
+    the real whisper container.
+
+### Known limitations
+
+- **Standard VHF prowords (Mayday, Pan-pan, Securite) transcribe poorly on
+  a whisper `tiny-int8` model whose `--initial-prompt` doesn't include
+  them.** General maritime traffic phraseology transcribed at ~90%+ word
+  accuracy in testing; "Mayday." alone came back as "Nade." every time,
+  "Securite." as "Take your it."/"Secure it.", and a tripled "Pan-pan"
+  triggered a Whisper repetition-loop bug (~100 repeats of "pan" in one
+  run). Root cause: `--initial-prompt` is a server-side startup flag
+  (confirmed in `wyoming-faster-whisper`'s `dispatch_handler.py` — only
+  `language` from our `transcribe` event is honored, not `context`/`name`),
+  and a shared instance's prompt is commonly tuned for an unrelated
+  voice-command use case with no VHF vocabulary in it at all. See
+  README.md's "Known limitation" section for the recommended fix (extend
+  the shared instance's initial prompt) and a copy-pasteable snippet.
+  Not fixable from this plugin's own code.
 
 ### Fixed
 

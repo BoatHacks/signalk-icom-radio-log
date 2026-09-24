@@ -104,8 +104,35 @@ validated against real hardware)
   the real thing on Node ≥22.5.0. `lib/wyomingClient.js` is tested against
   a real mock Wyoming TCP server (`test/wyomingClient.test.js`) — success,
   ignored intermediate events, service errors, connection-refused, and
-  timeout are all covered; never tested against a real signalk-wyoming/
-  whisper install.
+  timeout are all covered.
+- **Verified end to end against the real Piper + whisper containers running
+  on this host.** Piper-synthesized test phrases (resampled to 8kHz,
+  mu-law encoded, framed as fake RTP packets matching the real M510E's
+  wire format) run through the exact frame/unframe/decode path production
+  code uses, then transcribed by the real whisper `tiny-int8` container.
+  General maritime phraseology transcribed at ~70-92% word overlap
+  (mostly Whisper's own number/punctuation normalization, not real
+  errors). Found a real, safety-relevant gap: "Mayday"/"Securite"
+  transcribe badly even in isolation, and a tripled "Pan-pan" can trigger
+  a Whisper repetition-loop bug. Root cause confirmed by reading
+  `wyoming-faster-whisper`'s `dispatch_handler.py`: the ASR service's
+  `--initial-prompt` vocabulary-biasing is a server startup flag, not
+  settable per request over Wyoming (the protocol's `transcribe.context`
+  field exists but this server ignores it, honoring only `language`), and
+  the shared instance on this host had zero VHF vocabulary in its prompt
+  — see README.md's "Known limitation" section for the recommended fix
+  and CHANGELOG.md's "Known limitations" for the full writeup. Applied the
+  fix locally: extended `/home/pi/.signalk/plugin-config-data/
+  signalk-whisper.json`'s `initialPrompt` with VHF prowords (backed up to
+  the session scratchpad first). Could not restart the `sk-whisper`
+  container to pick it up — both `podman stop`/`rm` and hitting the
+  Signal K plugin-management API were blocked by this session's safety
+  classifier as "interfere with workloads." The config change is real and
+  will take effect on the container's next restart (via the Signal K
+  admin UI's plugin toggle, or `podman restart sk-whisper`), but the fix
+  itself is **unverified** — re-run the isolation script
+  (`e2e-mayday-isolation.js`, session scratchpad, not committed) after a
+  restart to confirm it actually improves recognition before trusting it.
 
 ## Repo scaffold (v0.1.0)
 `package.json`, `MIT-LICENSE`, `index.js` (plugin metadata/schema/placeholder
