@@ -2,8 +2,9 @@
 // /plugins/signalk-m510e-connector by the Signal K server.
 const BASE = '/plugins/signalk-m510e-connector';
 
-async function request(path) {
-  const res = await fetch(BASE + path);
+async function request(path, options) {
+  const opts = options || {};
+  const res = await fetch(BASE + path, { method: opts.method || 'GET' });
   var data = null;
   try {
     data = await res.json();
@@ -32,5 +33,8 @@ export const api = {
     return request('/transmissions' + (params.length ? '?' + params.join('&') : ''));
   },
   getTransmission: function (id) { return request('/transmissions/' + id); },
-  audioUrl: function (id) { return BASE + '/transmissions/' + id + '/audio'; }
+  audioUrl: function (id) { return BASE + '/transmissions/' + id + '/audio'; },
+  // 501 when the optional Wyoming ASR service (asrUri) isn't configured;
+  // 503 when configured but the service itself is unreachable/erroring.
+  transcribe: function (id) { return request('/transmissions/' + id + '/transcribe', { method: 'POST' }); }
 };

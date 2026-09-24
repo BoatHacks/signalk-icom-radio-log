@@ -10,7 +10,12 @@
 // raw framed RTP (forensic — exact captured bytes) and decoded to WAV
 // on demand by the /audio route (lib/rtpAudio.js), not at capture time.
 // Busy-flag tracking keys off channelNr with a debounce on brief squelch
-// drops — see README.md and CHANGELOG.md. Still open, requiring a real
+// drops — see README.md and CHANGELOG.md. Optional speech-to-text: POST
+// /transmissions/:id/transcribe sends the decoded PCM straight to a
+// Wyoming ASR service (e.g. signalk-whisper via signalk-wyoming) over
+// raw TCP (lib/wyomingClient.js) — signalk-wyoming's own REST API only
+// records *live* from a satellite mic, not already-recorded audio.
+// Disabled unless `asrUri` is configured. Still open, requiring a real
 // M510E to resolve:
 //
 //   - the 200ms busy-flag debounce default is a guess from one sample
@@ -28,7 +33,8 @@ const ip = require('ip')
 const RadioClient = require('./lib/radioClient')
 const db = require('./lib/db')
 const retention = require('./lib/retention')
-const { frameRtpPackets, unframeRtpPackets, rtpPcmuPacketsToWav } = require('./lib/rtpAudio')
+const { frameRtpPackets, unframeRtpPackets, rtpPcmuPacketsToWav, extractMuLawPayload, muLawToPcm16, SAMPLE_RATE } = require('./lib/rtpAudio')
+const { transcribeAudio } = require('./lib/wyomingClient')
 
 module.exports = function (app) {
   const plugin = {
@@ -78,6 +84,19 @@ module.exports = function (app) {
         description:
           'Delete oldest recordings once the log directory exceeds this size. 0 = unlimited. Applied independently of the age-based limit above — whichever limit is hit first prunes.',
         default: 0,
+      },
+      asrUri: {
+        type: 'string',
+        title: 'Speech-to-text service (Wyoming ASR URI)',
+        description:
+          'Optional. tcp://host:port of a Wyoming ASR service, typically signalk-whisper reached through an optional signalk-wyoming installation on this server. Leave empty to disable transcription — nothing else in this plugin depends on it.',
+        default: '',
+      },
+      asrLanguage: {
+        type: 'string',
+        title: 'Speech-to-text language hint',
+        description: 'Optional language code (e.g. "en") passed to the ASR service. Leave empty to use its default.',
+        default: '',
       },
     },
   }
@@ -238,6 +257,46 @@ module.exports = function (app) {
       }
       res.setHeader('Content-Type', 'audio/wav')
       res.send(wav)
+    })
+
+    // Speech-to-text, via an optional Wyoming ASR service (typically
+    // signalk-whisper reached through a signalk-wyoming installation).
+    // Not wired to any automatic trigger — the caller decides which
+    // transmissions are worth transcribing. 501 (not the usual 503/500)
+    // when asrUri is unset, since that's a configuration choice, not a
+    // runtime failure.
+    router.post('/transmissions/:id/transcribe', async (req, res) => {
+      if (!database) return res.status(404).json({ error: 'not found' })
+      if (!options.asrUri) {
+        return res.status(501).json({ error: 'speech-to-text is not configured (set asrUri in plugin settings)' })
+      }
+      const tx = db.getTransmission(database, Number(req.params.id))
+      if (!tx || !tx.audio_path || !fs.existsSync(tx.audio_path)) {
+        return res.status(404).json({ error: 'not found' })
+      }
+
+      let pcm
+      try {
+        const framed = fs.readFileSync(tx.audio_path)
+        pcm = muLawToPcm16(extractMuLawPayload(unframeRtpPackets(framed)))
+      } catch (err) {
+        app.error(`Failed decoding ${tx.audio_path} for transcription: ${err.message}`)
+        return res.status(500).json({ error: 'failed to decode audio' })
+      }
+
+      try {
+        const result = await transcribeAudio({
+          uri: options.asrUri,
+          pcm,
+          sampleRate: SAMPLE_RATE,
+          language: options.asrLanguage || undefined,
+        })
+        db.setTranscript(database, tx.id, result.text)
+        res.json({ transcript: result.text, language: result.language })
+      } catch (err) {
+        app.error(`Transcription failed for transmission #${tx.id}: ${err.message}`)
+        res.status(503).json({ error: err.message })
+      }
     })
   }
 

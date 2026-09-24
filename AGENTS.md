@@ -30,7 +30,10 @@ Phase 1: RX-only MVP with SQLite storage.
 Phase 2: REST endpoints + Preact/htm frontend (style like
 signalk-stowage-mgmt).
 Phase 3: enrichment via DSC/NMEA0183 correlation.
-Phase 4: retention/export.
+Phase 4: retention (done) / export (not started) / optional speech-to-text
+via an external Wyoming ASR service (done — see below; this plugin never
+runs a speech model itself, only talks Wyoming-protocol TCP to one that's
+already running).
 v2: TX (PTT mic) and hailer/PA transmission logging.
 
 ## Scope decisions
@@ -62,25 +65,47 @@ validated against real hardware)
 - `lib/rtpAudio.js` — RTP packet framing (for raw/forensic on-disk storage)
   and RTP/PCMU → WAV decoding (used on demand by the `/audio` route, not at
   capture time).
+- `lib/wyomingProtocol.js` — minimal, self-contained Wyoming wire framing
+  (encode/decode). Not a dependency on `signalk-wyoming/protocol` — that
+  package isn't on npm yet, and its own DEVELOPERS.md says sibling plugins
+  embed a tiny reimplementation for production use rather than depend on
+  it; same choice here.
+- `lib/wyomingClient.js` — `transcribeAudio()`: sends PCM straight to a
+  Wyoming ASR service over raw TCP (transcribe → audio-start →
+  audio-chunk(s) → audio-stop → transcript), bypassing signalk-wyoming's
+  own REST API entirely, since that API (`POST
+  /plugins/signalk-wyoming/api/transcribe`) only records *live* from a
+  satellite mic — there's no documented way to hand it audio that's
+  already been recorded.
 - `index.js` wires it together; `/status`, `/transmissions`,
-  `/transmissions/:id`, `/transmissions/:id/audio` return real data, and
-  emits `communication.vhf.recording.status` (`'recording'`/`'idle'`) via
+  `/transmissions/:id`, `/transmissions/:id/audio` return real data;
+  `POST /transmissions/:id/transcribe` calls the above (501 if `asrUri`
+  isn't configured, 503 if the service is unreachable/errors) and
+  persists the result via `db.setTranscript`; emits
+  `communication.vhf.recording.status` (`'recording'`/`'idle'`) via
   `app.handleMessage` on `tx-start`/`tx-end`/start/stop — the last open
   Phase 2 item, now done.
 - `public/` — buildless Preact+htm webapp (vendored, no CDN): sortable/
   filterable transmission table, inline playback, WAV download, live
-  status pill, light/dark theme. Verified interactively against a mock
+  status pill, light/dark theme, and now a per-row Transcribe button
+  (shows the stored transcript once done, a re-transcribe icon after that,
+  or an error indicator on failure). Verified interactively against a mock
   API server via a headless Chromium + puppeteer-core script (not
-  committed — one-off verification, not project tooling); not yet run
+  committed — one-off verification, not project tooling), including the
+  transcribe success/already-transcribed/failure cases; not yet run
   against the real plugin/database.
 - Minimum Node version raised to 22.5.0 because of `node:sqlite`.
-- 32 tests total; this sandbox's Node 20 can't load `lib/db.js`
+- 43 tests total; this sandbox's Node 20 can't load `lib/db.js`
   (`node:sqlite`), so `db.test.js`/`retention.test.js`/`plugin.test.js`
   fail here directly — confirmed pre-existing against unmodified `main`,
-  not a regression. Verified the new recording-status logic anyway via a
-  throwaway in-process `DatabaseSync` shim (not committed) good enough to
-  let `plugin.test.js` run; not a substitute for the real thing on
-  Node ≥22.5.0.
+  not a regression. Verified the recording-status and transcribe-route
+  wiring anyway via a throwaway in-process `DatabaseSync` shim (not
+  committed) good enough to let `plugin.test.js` run; not a substitute for
+  the real thing on Node ≥22.5.0. `lib/wyomingClient.js` is tested against
+  a real mock Wyoming TCP server (`test/wyomingClient.test.js`) — success,
+  ignored intermediate events, service errors, connection-refused, and
+  timeout are all covered; never tested against a real signalk-wyoming/
+  whisper install.
 
 ## Repo scaffold (v0.1.0)
 `package.json`, `MIT-LICENSE`, `index.js` (plugin metadata/schema/placeholder

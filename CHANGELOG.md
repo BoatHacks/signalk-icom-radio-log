@@ -63,6 +63,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   against a real `node:sqlite`-free run using a minimal in-process
   `DatabaseSync` shim, since this sandbox's Node 20 can't load
   `lib/db.js` otherwise.
+- Optional speech-to-text: `POST /transmissions/:id/transcribe` sends a
+  recording's decoded PCM to a Wyoming ASR service (e.g.
+  [signalk-whisper](https://github.com/hoeken/signalk-whisper) reached
+  through an optional [signalk-wyoming](https://github.com/hoeken/signalk-wyoming)
+  installation) and stores the result via `db.setTranscript` (new
+  `transcript` column). New `asrUri`/`asrLanguage` config options,
+  disabled (`501`) unless `asrUri` is set — nothing else in this plugin
+  depends on it.
+  - `lib/wyomingProtocol.js` — minimal, self-contained Wyoming wire
+    framing (encode/decode). Not a dependency on the unpublished
+    `signalk-wyoming/protocol` package; its own DEVELOPERS.md says
+    sibling plugins embed a tiny reimplementation for production instead
+    of depending on it — same choice here.
+  - `lib/wyomingClient.js` — `transcribeAudio()` talks directly to the
+    ASR service's raw Wyoming TCP port (transcribe → audio-start →
+    audio-chunk(s) → audio-stop → transcript). signalk-wyoming's own REST
+    API (`POST /plugins/signalk-wyoming/api/transcribe`) only records
+    *live* from a satellite mic; there's no documented way to hand it
+    audio that's already been recorded, hence talking to the ASR service
+    directly instead of the orchestrator.
+  - Webapp: a per-row Transcribe button, showing the transcript once
+    done, a re-transcribe icon after that, or an error indicator on
+    failure.
+  - Test coverage: `test/wyomingProtocol.test.js` (framing round-trips,
+    split reads, malformed input), `test/wyomingClient.test.js` (against
+    a real mock Wyoming TCP server — success, ignored intermediate
+    events, service errors, connection-refused, timeout), a decode-path
+    parity check against the real sample capture in
+    `test/pcap-replay.test.js`, and the `501`-when-unconfigured route
+    guard in `test/plugin.test.js`. Never tested against a real
+    signalk-wyoming/whisper install.
 
 ### Fixed
 

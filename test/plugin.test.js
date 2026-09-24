@@ -69,31 +69,56 @@ test('registerWithRouter exposes /status and /transmissions backed by real state
   const routes = {}
   const router = {
     get: (routePath, handler) => {
-      routes[routePath] = handler
+      routes[`GET ${routePath}`] = handler
+    },
+    post: (routePath, handler) => {
+      routes[`POST ${routePath}`] = handler
     },
   }
   plugin.registerWithRouter(router)
-  assert.strictEqual(typeof routes['/status'], 'function')
-  assert.strictEqual(typeof routes['/transmissions'], 'function')
-  assert.strictEqual(typeof routes['/transmissions/:id'], 'function')
-  assert.strictEqual(typeof routes['/transmissions/:id/audio'], 'function')
+  assert.strictEqual(typeof routes['GET /status'], 'function')
+  assert.strictEqual(typeof routes['GET /transmissions'], 'function')
+  assert.strictEqual(typeof routes['GET /transmissions/:id'], 'function')
+  assert.strictEqual(typeof routes['GET /transmissions/:id/audio'], 'function')
+  assert.strictEqual(typeof routes['POST /transmissions/:id/transcribe'], 'function')
 
   let statusBody = null
-  routes['/status']({}, { json: (body) => { statusBody = body } })
+  routes['GET /status']({}, { json: (body) => { statusBody = body } })
   assert.strictEqual(statusBody.recording, false)
   assert.strictEqual(statusBody.connected, false)
 
   let txBody = null
-  routes['/transmissions']({ query: {} }, { json: (body) => { txBody = body } })
+  routes['GET /transmissions']({ query: {} }, { json: (body) => { txBody = body } })
   assert.deepStrictEqual(txBody, [])
 
   let notFoundStatus = null
   let notFoundBody = null
-  routes['/transmissions/:id']({ params: { id: '999' } }, {
+  routes['GET /transmissions/:id']({ params: { id: '999' } }, {
     status: (code) => { notFoundStatus = code; return { json: (body) => { notFoundBody = body } } },
   })
   assert.strictEqual(notFoundStatus, 404)
   assert.ok(notFoundBody.error)
+
+  plugin.stop()
+})
+
+test('transcribe route returns 501 when asrUri is not configured', async () => {
+  const dataDir = tempDataDir()
+  const plugin = createPlugin(fakeApp(dataDir))
+  plugin.start({ ipOverride: '127.0.0.1' }) // no asrUri
+
+  const routes = {}
+  const router = { get: (p, h) => { routes[`GET ${p}`] = h }, post: (p, h) => { routes[`POST ${p}`] = h } }
+  plugin.registerWithRouter(router)
+
+  let status = null
+  let body = null
+  await routes['POST /transmissions/:id/transcribe'](
+    { params: { id: '1' } },
+    { status: (code) => { status = code; return { json: (b) => { body = b } } } }
+  )
+  assert.strictEqual(status, 501)
+  assert.ok(/not configured/.test(body.error))
 
   plugin.stop()
 })

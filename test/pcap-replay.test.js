@@ -5,7 +5,7 @@ const path = require('path')
 const { readUdpPackets } = require('./helpers/pcap')
 const protocol = require('../lib/protocol')
 const RadioClient = require('../lib/radioClient')
-const { frameRtpPackets, unframeRtpPackets, rtpPcmuPacketsToWav } = require('../lib/rtpAudio')
+const { frameRtpPackets, unframeRtpPackets, rtpPcmuPacketsToWav, extractMuLawPayload, muLawToPcm16 } = require('../lib/rtpAudio')
 
 // Replays tools/capture-spike/capture.sanitized.pcap — a real WiFi capture
 // of an M510E session — through the protocol/radioClient layer directly
@@ -74,6 +74,26 @@ test('storage round-trip: frame -> write -> unframe -> decode reproduces the rea
   }
   const rms = Math.sqrt(sumSquares / sampleCount)
   assert.ok(rms > 100, `expected non-trivial RMS for real speech, got ${rms}`)
+})
+
+test('transcription decode path (extractMuLawPayload + muLawToPcm16) matches the WAV decode of the same capture', () => {
+  // POST /transmissions/:id/transcribe decodes straight to raw PCM for the
+  // Wyoming ASR service, skipping pcm16ToWav's RIFF header — confirms that
+  // path produces byte-identical PCM to the already-verified WAV decode
+  // above, not just "doesn't crash".
+  const pkts = loadCapture()
+  const voice = pkts
+    .filter((p) => p.srcIp === RADIO_IP && p.srcPort === 50001)
+    .map((p) => p.payload)
+
+  const framed = frameRtpPackets(voice)
+  const recovered = unframeRtpPackets(framed)
+  const pcmForTranscription = muLawToPcm16(extractMuLawPayload(recovered))
+
+  const wav = rtpPcmuPacketsToWav(recovered)
+  const pcmFromWav = wav.subarray(44)
+
+  assert.ok(pcmForTranscription.equals(pcmFromWav))
 })
 
 test('parseChannelStatus: real 28-byte ack packets are correctly rejected, 40-byte status packets parse', () => {

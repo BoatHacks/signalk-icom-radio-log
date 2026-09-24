@@ -184,6 +184,33 @@ body {
 }
 .download-link:hover { text-decoration: underline; }
 
+.transcript-cell { max-width: 20rem; white-space: normal; }
+
+.transcribe-btn {
+  font: inherit;
+  font-size: 12px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+.transcribe-btn:hover { background: var(--surface-alt); }
+
+.transcript-text {
+  display: inline-block;
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.transcript-pending { color: var(--text-muted); font-style: italic; }
+
+.transcript-error { color: var(--danger); margin-left: 6px; cursor: help; }
+
 .player-bar {
   position: fixed;
   bottom: 0;

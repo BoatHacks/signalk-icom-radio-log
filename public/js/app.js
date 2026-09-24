@@ -57,6 +57,21 @@ function SortableHeader(props) {
   `;
 }
 
+function TranscriptCell(props) {
+  var tx = props.tx;
+  if (props.transcribing) return html`<span class="transcript-pending">Transcribing…</span>`;
+  if (tx.transcript) {
+    return html`
+      <span class="transcript-text" title=${tx.transcript}>${tx.transcript}</span>
+      <button class="transcribe-btn" onClick=${function () { props.onTranscribe(tx); }} title="Re-transcribe">↻</button>
+    `;
+  }
+  return html`
+    <button class="transcribe-btn" onClick=${function () { props.onTranscribe(tx); }}>Transcribe</button>
+    ${props.error ? html`<span class="transcript-error" title=${props.error}>⚠</span>` : null}
+  `;
+}
+
 function TransmissionRow(props) {
   var tx = props.tx;
   var isPlaying = props.nowPlayingId === tx.id;
@@ -73,6 +88,9 @@ function TransmissionRow(props) {
           ${isPlaying ? '■' : '▶'}
         </button>
         <a class="download-link" href=${api.audioUrl(tx.id)} download=${'transmission-' + tx.id + '.wav'} title="Download">⬇</a>
+      </td>
+      <td class="transcript-cell">
+        <${TranscriptCell} tx=${tx} transcribing=${props.transcribing} error=${props.transcribeError} onTranscribe=${props.onTranscribe} />
       </td>
     </tr>
   `;
@@ -121,6 +139,11 @@ function App() {
   var nowPlayingState = useState(null);
   var nowPlaying = nowPlayingState[0], setNowPlaying = nowPlayingState[1];
 
+  var transcribingIdsState = useState(function () { return new Set(); });
+  var transcribingIds = transcribingIdsState[0], setTranscribingIds = transcribingIdsState[1];
+  var transcribeErrorsState = useState({});
+  var transcribeErrors = transcribeErrorsState[0], setTranscribeErrors = transcribeErrorsState[1];
+
   useEffect(function () { applyTheme(theme); }, [theme]);
 
   useEffect(function () {
@@ -165,6 +188,40 @@ function App() {
     setNowPlaying(function (prev) { return prev && prev.id === tx.id ? null : tx; });
   };
 
+  var handleTranscribe = function (tx) {
+    if (transcribingIds.has(tx.id)) return;
+    setTranscribingIds(function (prev) { return new Set(prev).add(tx.id); });
+    setTranscribeErrors(function (prev) {
+      var next = Object.assign({}, prev);
+      delete next[tx.id];
+      return next;
+    });
+    api.transcribe(tx.id)
+      .then(function (result) {
+        setTranscriptions(tx.id, result.transcript);
+      })
+      .catch(function (err) {
+        setTranscribeErrors(function (prev) {
+          var next = Object.assign({}, prev);
+          next[tx.id] = err.message;
+          return next;
+        });
+      })
+      .then(function () {
+        setTranscribingIds(function (prev) {
+          var next = new Set(prev);
+          next.delete(tx.id);
+          return next;
+        });
+      });
+  };
+
+  function setTranscriptions(id, transcript) {
+    setTransmissions(function (prev) {
+      return prev.map(function (t) { return t.id === id ? Object.assign({}, t, { transcript: transcript }) : t; });
+    });
+  }
+
   var sorted = sortTransmissions(transmissions, sort.key, sort.dir);
 
   return html`
@@ -202,15 +259,17 @@ function App() {
                 return html`<${SortableHeader} column=${col} sortKey=${sort.key} sortDir=${sort.dir} onSort=${handleSort} />`;
               })}
               <th>Play</th>
+              <th>Transcript</th>
             </tr>
           </thead>
           <tbody>
             ${!loaded
-              ? html`<tr><td colSpan="7" class="empty-row">Loading…</td></tr>`
+              ? html`<tr><td colSpan="8" class="empty-row">Loading…</td></tr>`
               : sorted.length === 0
-                ? html`<tr><td colSpan="7" class="empty-row">No recordings yet.</td></tr>`
+                ? html`<tr><td colSpan="8" class="empty-row">No recordings yet.</td></tr>`
                 : sorted.map(function (tx) {
-                    return html`<${TransmissionRow} tx=${tx} nowPlayingId=${nowPlaying ? nowPlaying.id : null} onPlay=${handlePlay} />`;
+                    return html`<${TransmissionRow} tx=${tx} nowPlayingId=${nowPlaying ? nowPlaying.id : null} onPlay=${handlePlay}
+                      transcribing=${transcribingIds.has(tx.id)} transcribeError=${transcribeErrors[tx.id]} onTranscribe=${handleTranscribe} />`;
                   })}
           </tbody>
         </table>

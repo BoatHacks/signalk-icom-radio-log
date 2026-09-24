@@ -73,6 +73,15 @@ test('listOldestTransmissions orders oldest first', () => {
   database.close()
 })
 
+test('setTranscript updates the transcript column, null until set', () => {
+  const database = db.openDb(tempDbPath())
+  const id = db.insertTransmission(database, { channelNr: 16, startTs: 1000 })
+  assert.strictEqual(db.getTransmission(database, id).transcript, null)
+  db.setTranscript(database, id, 'mayday mayday')
+  assert.strictEqual(db.getTransmission(database, id).transcript, 'mayday mayday')
+  database.close()
+})
+
 test('deleteTransmission removes the row', () => {
   const database = db.openDb(tempDbPath())
   const id = db.insertTransmission(database, { channelNr: 16, startTs: 1000 })

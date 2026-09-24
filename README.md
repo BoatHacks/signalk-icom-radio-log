@@ -124,10 +124,24 @@ does the busy flag behave as cleanly as assumed.
 
 ### Phase 4 — retention & polish
 
-- Configurable retention (days or max disk size), oldest-first pruning.
-- Export a date range as a zip.
-- Local transcription is an explicit stretch goal, not v1 scope — most
-  SignalK hosts are Pi-class hardware.
+- Configurable retention (days or max disk size), oldest-first pruning —
+  done.
+- Export a date range as a zip — not started.
+- **Optional speech-to-text — done.** `POST /transmissions/:id/transcribe`
+  sends a recording's decoded audio to a Wyoming ASR service (e.g.
+  [signalk-whisper](https://github.com/hoeken/signalk-whisper) via an
+  optional [signalk-wyoming](https://github.com/hoeken/signalk-wyoming)
+  installation) and stores the returned transcript. Set `asrUri` in the
+  plugin config to enable it (`tcp://host:port`, e.g.
+  `tcp://localhost:10300` if signalk-wyoming manages whisper locally) —
+  empty by default, and nothing else in this plugin depends on it. This
+  plugin never runs a speech model itself (still true to the original
+  "most SignalK hosts are Pi-class hardware" concern) — it only talks
+  Wyoming-protocol TCP to a service that's already running. signalk-wyoming's
+  own REST API only transcribes *live* mic recordings (`POST
+  /plugins/signalk-wyoming/api/transcribe`), not already-recorded audio, so
+  this plugin talks to the underlying ASR service directly instead — see
+  `lib/wyomingClient.js`/`lib/wyomingProtocol.js`.
 
 ## Scope decisions
 
