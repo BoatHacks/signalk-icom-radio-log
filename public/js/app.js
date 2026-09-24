@@ -90,6 +90,8 @@ function TransmissionRow(props) {
         <button class="play-btn" onClick=${function () { props.onPlay(tx); }}>
           ${isPlaying ? '■' : '▶'}
         </button>
+      </td>
+      <td>
         <a class="download-btn" href=${api.audioUrl(tx.id)} download=${'transmission-' + tx.id + '.wav'} title="Download">⬇</a>
       </td>
       <td>
@@ -265,15 +267,16 @@ function App() {
                 return html`<${SortableHeader} column=${col} sortKey=${sort.key} sortDir=${sort.dir} onSort=${handleSort} />`;
               })}
               <th>Play</th>
+              <th>Download</th>
               <th>Transcribe</th>
               <th>Transcript</th>
             </tr>
           </thead>
           <tbody>
             ${!loaded
-              ? html`<tr><td colSpan="9" class="empty-row">Loading…</td></tr>`
+              ? html`<tr><td colSpan="10" class="empty-row">Loading…</td></tr>`
               : sorted.length === 0
-                ? html`<tr><td colSpan="9" class="empty-row">No recordings yet.</td></tr>`
+                ? html`<tr><td colSpan="10" class="empty-row">No recordings yet.</td></tr>`
                 : sorted.map(function (tx) {
                     return html`<${TransmissionRow} tx=${tx} nowPlayingId=${nowPlaying ? nowPlaying.id : null} onPlay=${handlePlay}
                       transcribing=${transcribingIds.has(tx.id)} transcribeError=${transcribeErrors[tx.id]} onTranscribe=${handleTranscribe} />`;
