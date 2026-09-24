@@ -57,19 +57,22 @@ function SortableHeader(props) {
   `;
 }
 
-function TranscriptCell(props) {
+function TranscribeCell(props) {
   var tx = props.tx;
   if (props.transcribing) return html`<span class="transcript-pending">Transcribing…</span>`;
   if (tx.transcript) {
-    return html`
-      <span class="transcript-text" title=${tx.transcript}>${tx.transcript}</span>
-      <button class="transcribe-btn" onClick=${function () { props.onTranscribe(tx); }} title="Re-transcribe">↻</button>
-    `;
+    return html`<button class="transcribe-btn" onClick=${function () { props.onTranscribe(tx); }} title="Re-transcribe">↻</button>`;
   }
   return html`
     <button class="transcribe-btn" onClick=${function () { props.onTranscribe(tx); }}>Transcribe</button>
     ${props.error ? html`<span class="transcript-error" title=${props.error}>⚠</span>` : null}
   `;
+}
+
+function TranscriptCell(props) {
+  var tx = props.tx;
+  if (!tx.transcript) return html`—`;
+  return html`<span class="transcript-text">${tx.transcript}</span>`;
 }
 
 function TransmissionRow(props) {
@@ -89,8 +92,11 @@ function TransmissionRow(props) {
         </button>
         <a class="download-btn" href=${api.audioUrl(tx.id)} download=${'transmission-' + tx.id + '.wav'} title="Download">⬇</a>
       </td>
+      <td>
+        <${TranscribeCell} tx=${tx} transcribing=${props.transcribing} error=${props.transcribeError} onTranscribe=${props.onTranscribe} />
+      </td>
       <td class="transcript-cell">
-        <${TranscriptCell} tx=${tx} transcribing=${props.transcribing} error=${props.transcribeError} onTranscribe=${props.onTranscribe} />
+        <${TranscriptCell} tx=${tx} />
       </td>
     </tr>
   `;
@@ -259,14 +265,15 @@ function App() {
                 return html`<${SortableHeader} column=${col} sortKey=${sort.key} sortDir=${sort.dir} onSort=${handleSort} />`;
               })}
               <th>Play</th>
+              <th>Transcribe</th>
               <th>Transcript</th>
             </tr>
           </thead>
           <tbody>
             ${!loaded
-              ? html`<tr><td colSpan="8" class="empty-row">Loading…</td></tr>`
+              ? html`<tr><td colSpan="9" class="empty-row">Loading…</td></tr>`
               : sorted.length === 0
-                ? html`<tr><td colSpan="8" class="empty-row">No recordings yet.</td></tr>`
+                ? html`<tr><td colSpan="9" class="empty-row">No recordings yet.</td></tr>`
                 : sorted.map(function (tx) {
                     return html`<${TransmissionRow} tx=${tx} nowPlayingId=${nowPlaying ? nowPlaying.id : null} onPlay=${handlePlay}
                       transcribing=${transcribingIds.has(tx.id)} transcribeError=${transcribeErrors[tx.id]} onTranscribe=${handleTranscribe} />`;
